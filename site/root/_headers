@@ -1,0 +1,4 @@
+# Netlify response headers. Keep the whole site (pages, images, scripts) out of
+# search results and caches: this demo is meant to be found only through its repo.
+/*
+  X-Robots-Tag: noindex, nofollow, noarchive, nosnippet, noimageindex

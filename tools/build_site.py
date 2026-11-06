@@ -222,6 +222,8 @@ def build() -> None:
     shutil.copytree(SITE / "assets/img", DIST / "assets/img", ignore=shutil.ignore_patterns("*.md"))
     for f in ("logo.svg", "favicon.svg", "site.js"):
         shutil.copy(SITE / "assets" / f, DIST / "assets" / f)
+    for f in (SITE / "root").iterdir():  # _headers (noindex on every file) and robots.txt
+        shutil.copy(f, DIST / f.name)
 
     subprocess.run(
         ["npx", "-y", TAILWIND, "-c", str(SITE / "tailwind.config.js"),

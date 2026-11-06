@@ -172,6 +172,8 @@ if DIST.exists():
             if path.endswith("/"):
                 target = target / "index.html"
             check(target.exists(), f"site {rel}: broken link {ref}")
+    for f, must in (("_headers", "X-Robots-Tag: noindex"), ("robots.txt", "User-agent: GPTBot")):
+        check((DIST / f).exists() and must in (DIST / f).read_text(), f"site: {f} missing or incomplete")
     print(f"site: {len(pages)} pages checked")
 
 # 8. KB size

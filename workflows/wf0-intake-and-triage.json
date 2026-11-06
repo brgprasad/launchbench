@@ -883,7 +883,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// One item holding the KB text plus the personas, members and testers tabs, so\n// each email is merged with them once (Attach knowledge base) instead of re-reading.\n// The KB comes from the hourly cache, or from Drive when the cache was stale.\nconst ran = name => { try { const n = $(name); return n.isExecuted ? n.first().json : null; } catch (err) { return null; } };\nconst kb = (ran('Save to cache') || ran('Cached knowledge base') || {}).kb;\nreturn [{ json: {\n  kb,\n  personas: $('Read personas').all().map(i => i.json),\n  members: $('Read members').all().map(i => i.json),\n  testers: $('Read testers').all().map(i => i.json).filter(t => t.tester_email),\n} }];"
+        "jsCode": "// One item holding the KB text plus the personas, members and testers tabs, so\n// each email is merged with them once (Attach knowledge base) instead of re-reading.\n// The KB is downloaded from Drive for every batch of emails.\nreturn [{ json: {\n  kb: $('Pass on the knowledge base').first().json.kb,\n  personas: $('Read personas').all().map(i => i.json),\n  members: $('Read members').all().map(i => i.json),\n  testers: $('Read testers').all().map(i => i.json).filter(t => t.tester_email),\n} }];"
       },
       "id": "a59f854d-38dc-45e4-bab6-bcb1bb00a0a4",
       "name": "Bundle reference data",
@@ -1659,7 +1659,7 @@
     },
     {
       "id": "b382f519-1e6f-4359-9f75-228d22f8b88f",
-      "name": "Cached knowledge base",
+      "name": "Knowledge base needed",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
@@ -1669,7 +1669,7 @@
       "parameters": {
         "mode": "runOnceForAllItems",
         "language": "javaScript",
-        "jsCode": "// Use the cached knowledge base if it is under an hour old (see \"Save to cache\").\n// Drive calls go through n8n Cloud's shared Google project, whose per-minute\n// quota sometimes runs out, so most emails should need no Drive call at all.\nconst s = $getWorkflowStaticData('global');\nconst fresh = Boolean(s.kb) && Date.now() - (s.kb_at || 0) < 3600e3;\nreturn [{ json: { fresh, kb: fresh ? s.kb : '' } }];"
+        "jsCode": "// Always read the knowledge base fresh from Drive. (An hourly cache in the\n// workflow's static data was tried and removed: static data also holds the Gmail\n// trigger's bookmark, and runs that saved the cache could write back an old\n// bookmark, making the trigger re-read old unread mail.)\nreturn [{ json: { fresh: false, kb: '' } }];"
       }
     },
     {
@@ -1706,7 +1706,7 @@
     },
     {
       "id": "c758fe33-e38d-4ea5-a222-9b9f49971ba4",
-      "name": "Save to cache",
+      "name": "Pass on the knowledge base",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
@@ -1716,7 +1716,7 @@
       "parameters": {
         "mode": "runOnceForAllItems",
         "language": "javaScript",
-        "jsCode": "// Keep the downloaded knowledge base for an hour. If the download failed (for\n// example Drive's per-minute quota), carry on with the last good copy.\nconst s = $getWorkflowStaticData('global');\nconst j = $input.first().json;\nconst kb = String(j.kb || '');\nif (kb) {\n  s.kb = kb;\n  s.kb_at = Date.now();\n  return [{ json: { kb, source: 'drive' } }];\n}\nif (s.kb) return [{ json: { kb: s.kb, source: 'cache (download failed)' } }];\nthrow new Error('Could not download the knowledge base from Drive and there is no cached copy: ' + JSON.stringify(j.error || j).slice(0, 300));"
+        "jsCode": "// Pass the downloaded knowledge base on. Nothing is stored between runs (see\n// \"Knowledge base needed\"); if the download failed, stop so WF-E raises an alert.\nconst j = $input.first().json;\nconst kb = String(j.kb || '');\nif (kb) return [{ json: { kb, source: 'drive' } }];\nthrow new Error('Could not download the knowledge base from Drive: ' + JSON.stringify(j.error || j).slice(0, 300));"
       }
     },
     {
@@ -1746,7 +1746,7 @@
             "index": 0
           },
           {
-            "node": "Cached knowledge base",
+            "node": "Knowledge base needed",
             "type": "main",
             "index": 0
           }
@@ -2205,17 +2205,6 @@
         ]
       ]
     },
-    "Cached knowledge base": {
-      "main": [
-        [
-          {
-            "node": "Cached copy fresh?",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "Cached copy fresh?": {
       "main": [
         [
@@ -2238,18 +2227,7 @@
       "main": [
         [
           {
-            "node": "Save to cache",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Save to cache": {
-      "main": [
-        [
-          {
-            "node": "Read personas",
+            "node": "Pass on the knowledge base",
             "type": "main",
             "index": 0
           }
@@ -2261,6 +2239,28 @@
         [
           {
             "node": "Classify again",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Knowledge base needed": {
+      "main": [
+        [
+          {
+            "node": "Cached copy fresh?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pass on the knowledge base": {
+      "main": [
+        [
+          {
+            "node": "Read personas",
             "type": "main",
             "index": 0
           }
@@ -2392,11 +2392,11 @@
       "name": "Prepare",
       "nodeNames": [
         "Normalise email",
-        "Cached knowledge base",
+        "Knowledge base needed",
         "Cached copy fresh?",
         "Download knowledge base",
         "Read knowledge base",
-        "Save to cache",
+        "Pass on the knowledge base",
         "Read personas",
         "Read members",
         "Read testers",

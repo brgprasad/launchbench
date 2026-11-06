@@ -1,0 +1,234 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon, img %}
+{% from "_partials.html" import cta_band %}
+{% block main %}
+
+{# ---------- Hero ---------- #}
+<section class="relative overflow-hidden">
+  <div class="pointer-events-none absolute -right-40 -top-40 h-[36rem] w-[36rem] rounded-full bg-brand-100/60 blur-3xl"></div>
+  <div class="wrap relative grid items-center gap-12 pb-16 pt-10 lg:grid-cols-12 lg:gap-10 lg:pb-24 lg:pt-16">
+    <div class="lg:col-span-6">
+      <span class="eyebrow">{{ icon('pin', 'h-3.5 w-3.5') }} {{ c.hero.eyebrow }}</span>
+      <h1 class="mt-6 text-[2.6rem] font-extrabold leading-[1.05] text-ink sm:text-6xl lg:text-[4.1rem]">
+        {{ c.hero.title_a }}<br><span class="relative whitespace-nowrap text-brand-500">{{ c.hero.title_b }}<svg class="absolute -bottom-2 left-0 h-3 w-full text-brand-200" viewBox="0 0 300 12" preserveAspectRatio="none" aria-hidden="true"><path d="M2 9c60-6 150-8 296-3" stroke="currentColor" stroke-width="5" fill="none" stroke-linecap="round"/></svg></span>
+      </h1>
+      <p class="mt-7 max-w-xl text-lg leading-relaxed text-ink-500">{{ c.hero.lede }}</p>
+      <div class="mt-8 flex flex-wrap gap-3">
+        <a href="/book-a-tour/" class="btn-primary px-6 py-3.5 text-base">Book a free tour {{ icon('arrow', 'h-4 w-4') }}</a>
+        <a href="/pricing/" class="btn-ghost px-6 py-3.5 text-base">See pricing</a>
+      </div>
+      <dl class="mt-10 grid max-w-lg grid-cols-3 gap-6 border-t border-ink/10 pt-6">
+        <div><dt class="text-xs font-medium uppercase tracking-wider text-ink-400">Centres</dt><dd class="mt-1 font-display text-2xl font-extrabold">{{ centres|length }}</dd></div>
+        <div><dt class="text-xs font-medium uppercase tracking-wider text-ink-400">Seats</dt><dd class="mt-1 font-display text-2xl font-extrabold">{{ '{:,}'.format(total_seats) }}</dd></div>
+        <div><dt class="text-xs font-medium uppercase tracking-wider text-ink-400">Member teams</dt><dd class="mt-1 font-display text-2xl font-extrabold">{{ c.brand.member_companies }}+</dd></div>
+      </dl>
+    </div>
+
+    <div class="relative lg:col-span-6">
+      <div class="relative overflow-hidden rounded-[2rem] shadow-lift">
+        {{ img('hero-team', 'A startup team working around a table at Launchbench Indiranagar', 'aspect-[4/3] w-full object-cover lg:aspect-[5/4]', '(min-width: 1024px) 600px, 100vw', eager=true) }}
+      </div>
+      {% if featured %}
+      <div class="absolute -bottom-6 left-4 right-4 sm:left-auto sm:right-6 sm:w-72">
+        <div class="card flex items-center gap-4 p-4">
+          <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-leaf-100 text-leaf-600">{{ icon('building') }}</div>
+          <div class="min-w-0">
+            <p class="text-xs font-semibold uppercase tracking-wider text-leaf-600">{{ 'Available now' if featured.now else 'Opening ' ~ featured.from_nice }}</p>
+            <p class="truncate text-sm font-semibold text-ink">{{ featured.size }}-seat cabin · {{ featured.centre }}</p>
+          </div>
+        </div>
+      </div>
+      {% endif %}
+      <div class="absolute -left-4 top-8 hidden sm:block">
+        <div class="card px-4 py-3">
+          <p class="text-xs text-ink-400">Hot desks from</p>
+          <p class="font-display text-xl font-extrabold">{{ from_hot|inr }}<span class="text-sm font-medium text-ink-400">/mo</span></p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+{# ---------- Logo strip ---------- #}
+<section class="border-y border-ink/5 bg-white/60">
+  <div class="wrap py-8">
+    <p class="text-center text-xs font-semibold uppercase tracking-[0.18em] text-ink-400">Home to {{ c.brand.member_companies }}+ teams, including</p>
+    <ul class="mt-5 flex flex-wrap items-center justify-center gap-x-10 gap-y-4">
+      {% for name in c.logo_strip %}
+      <li class="font-display text-lg font-bold tracking-tight text-ink-300 {{ loop.cycle('', 'italic', 'uppercase text-base tracking-widest', '') }}">{{ name }}</li>
+      {% endfor %}
+    </ul>
+  </div>
+</section>
+
+{# ---------- Workspaces ---------- #}
+<section class="wrap pt-24">
+  <div class="flex flex-col justify-between gap-6 sm:flex-row sm:items-end">
+    <div>
+      <h2 class="section-title">A desk for day one.<br class="hidden sm:block"> A floor for Series B.</h2>
+      <p class="section-lede">Start with one seat and grow into your own cabin without changing address. Every plan includes internet, power backup, housekeeping and meeting-room credits.</p>
+    </div>
+    <a href="/workspaces/" class="link-arrow shrink-0">Compare all plans {{ icon('arrow', 'h-4 w-4') }}</a>
+  </div>
+  {% set plans = [
+    ('space-hot', 'Hot desk', from_hot, 'per seat / month', 'Any open seat, month-to-month. 8 am–9 pm, Mon–Sat.', '/workspaces/#hot-desk'),
+    ('space-dedicated', 'Dedicated desk', from_ded, 'per seat / month', 'Your own desk and pedestal, with 24×7 access. 3-month lock-in.', '/workspaces/#dedicated-desk'),
+    ('space-cabin', 'Private cabin', from_cab, 'per seat / month', 'A lockable room for 4 to 30 people, 24×7. 6-month lock-in.', '/workspaces/#private-cabin'),
+    ('space-founders', 'Founders Plan', from_fnd, 'per seat / month', '1 to 3 dedicated desks for very early teams. 3-month lock-in.', '/startups/'),
+  ] %}
+  <div class="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+    {% for image, title, price, unit, text, href in plans %}
+    <a href="{{ href }}" class="card group flex flex-col overflow-hidden transition hover:-translate-y-1 hover:shadow-lift">
+      <div class="relative overflow-hidden">
+        {{ img(image, title, 'aspect-[4/3] w-full object-cover transition duration-500 group-hover:scale-105', '(min-width: 1024px) 300px, (min-width: 640px) 50vw, 100vw') }}
+        {% if title == 'Founders Plan' %}<span class="absolute left-3 top-3 rounded-full bg-brand-500 px-2.5 py-1 text-xs font-semibold text-white">For early startups</span>{% endif %}
+      </div>
+      <div class="flex flex-1 flex-col p-6">
+        <h3 class="text-lg font-bold">{{ title }}</h3>
+        <p class="mt-2 flex-1 text-sm leading-relaxed text-ink-500">{{ text }}</p>
+        <div class="mt-5 border-t border-ink/5 pt-4">
+          <p class="text-xs font-medium uppercase tracking-wider text-ink-400">From</p>
+          <p class="mt-0.5"><span class="font-display text-2xl font-extrabold text-ink">{{ price|inr }}</span> <span class="text-sm text-ink-400">{{ unit }}</span></p>
+        </div>
+      </div>
+    </a>
+    {% endfor %}
+  </div>
+  <p class="mt-6 text-sm text-ink-400">Prices exclude 18% GST. Save 5% on a 6-month lock-in and 10% on 12 months.</p>
+</section>
+
+{# ---------- Features ---------- #}
+<section class="wrap pt-24">
+  <div class="grid gap-12 lg:grid-cols-12 lg:items-center">
+    <div class="lg:col-span-5">
+      <div class="relative">
+        {{ img('lounge', 'The lounge at a Launchbench centre', 'aspect-[4/3] w-full rounded-[2rem] object-cover shadow-lift lg:aspect-[4/5]', '(min-width: 1024px) 480px, 100vw') }}
+        <div class="card absolute -bottom-6 -right-2 max-w-[15rem] p-5 sm:-right-6">
+          <p class="text-sm font-semibold text-ink">Meeting rooms named after funding stages.</p>
+          <p class="mt-1 text-sm text-ink-500">Book <em>Seed</em> for a standup. Save <em>IPO</em> for the board.</p>
+        </div>
+      </div>
+    </div>
+    <div class="lg:col-span-7 lg:pl-8">
+      <h2 class="section-title">Everything a team needs.<br>Nothing it has to manage.</h2>
+      <p class="section-lede">We run the building, so you can run the company. Every centre comes with the basics done properly.</p>
+      <div class="mt-10 grid gap-x-8 gap-y-8 sm:grid-cols-2">
+        {% for f in c.features %}
+        <div class="flex gap-4">
+          <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-brand-50 text-brand-600 ring-1 ring-brand-100">{{ icon(f.icon) }}</div>
+          <div>
+            <h3 class="font-semibold">{{ f.title }}</h3>
+            <p class="mt-1 text-sm leading-relaxed text-ink-500">{{ f.text }}</p>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</section>
+
+{# ---------- Locations ---------- #}
+<section class="pt-28">
+  <div class="wrap flex flex-col justify-between gap-6 sm:flex-row sm:items-end">
+    <div>
+      <h2 class="section-title">Five neighbourhoods. One membership.</h2>
+      <p class="section-lede">From the startup lanes of Koramangala to the tech parks of Whitefield, there's a Launchbench within easy reach of wherever your team lives.</p>
+    </div>
+    <a href="/locations/" class="link-arrow shrink-0">All locations {{ icon('arrow', 'h-4 w-4') }}</a>
+  </div>
+  <div class="wrap mt-12 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+    {% for ctr in centres %}
+    <a href="/locations/{{ ctr.slug }}/" class="card group flex flex-col overflow-hidden transition hover:-translate-y-1 hover:shadow-lift {{ 'lg:col-span-2 lg:flex-row' if loop.first else '' }}">
+      <div class="relative overflow-hidden {{ 'lg:w-1/2' if loop.first else '' }}">
+        {{ img(ctr.image, 'Inside Launchbench ' ~ ctr.name, 'h-full w-full object-cover aspect-[16/10] transition duration-500 group-hover:scale-105', '(min-width: 1024px) 600px, 100vw') }}
+        {% if ctr.tag %}<span class="absolute left-3 top-3 rounded-full bg-white/95 px-2.5 py-1 text-xs font-semibold capitalize text-ink">{{ ctr.tag }}</span>{% endif %}
+      </div>
+      <div class="flex flex-1 flex-col p-6 {{ 'lg:p-8' if loop.first else '' }}">
+        <div class="flex items-center justify-between gap-3">
+          <h3 class="text-xl font-bold">{{ ctr.name }}</h3>
+          <span class="text-xs font-medium text-ink-400">{{ ctr.seats }} seats</span>
+        </div>
+        <p class="mt-2 text-sm leading-relaxed text-ink-500">{{ ctr.blurb }}</p>
+        {% if loop.first %}<p class="mt-4 flex gap-2 text-sm text-ink-600">{{ icon('pin', 'mt-0.5 h-4 w-4 shrink-0 text-brand-500') }} {{ ctr.address }}</p>{% endif %}
+        <div class="flex-1"></div>
+        <div class="mt-4 flex flex-wrap gap-2">
+          <span class="chip {{ 'bg-leaf-100 text-leaf-600' if ctr.metro_walk else '' }}">{{ icon('train', 'h-3.5 w-3.5') }} {{ ctr.metro_short }}</span>
+          {% if ctr.pet_friendly %}<span class="chip">{{ icon('paw', 'h-3.5 w-3.5') }} Pet-friendly</span>{% endif %}
+          {% if ctr.has_event_hall %}<span class="chip">{{ icon('users', 'h-3.5 w-3.5') }} Event hall</span>{% endif %}
+        </div>
+        <dl class="mt-5 grid grid-cols-2 gap-4 border-t border-ink/5 pt-4">
+          <div><dt class="text-xs text-ink-400">Hot desk from</dt><dd class="font-display text-lg font-bold">{{ ctr.price_hot|inr }}</dd></div>
+          <div><dt class="text-xs text-ink-400">Cabin from, per seat</dt><dd class="font-display text-lg font-bold">{{ ctr.price_cab|inr }}</dd></div>
+        </dl>
+      </div>
+    </a>
+    {% endfor %}
+  </div>
+</section>
+
+{# ---------- Startups band ---------- #}
+<section class="wrap pt-28">
+  <div class="relative overflow-hidden rounded-[2.5rem] bg-ink text-white">
+    <div class="pointer-events-none absolute -left-24 -top-24 h-80 w-80 rounded-full bg-brand-500/25 blur-3xl"></div>
+    <div class="relative grid lg:grid-cols-2">
+      <div class="p-8 sm:p-12 lg:p-16">
+        <span class="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-brand-300">{{ icon('rocket', 'h-3.5 w-3.5') }} Startup programme</span>
+        <h2 class="mt-6 font-display text-3xl font-extrabold leading-tight sm:text-4xl">Built for the first three years, when every rupee counts.</h2>
+        <ul class="mt-8 space-y-4 text-white/80">
+          <li class="flex gap-3"><span class="mt-0.5 text-brand-400">{{ icon('check') }}</span><span><strong class="text-white">Founders Plan:</strong> 1 to 3 dedicated desks at {{ from_fnd|inr }} a seat, with a 3-month lock-in and 10 meeting-room credits a month.</span></li>
+          <li class="flex gap-3"><span class="mt-0.5 text-brand-400">{{ icon('check') }}</span><span><strong class="text-white">15% off for 6 months</strong> for startups referred by our partner accelerators and funds.</span></li>
+          <li class="flex gap-3"><span class="mt-0.5 text-brand-400">{{ icon('check') }}</span><span><strong class="text-white">Mentor office hours</strong> every second Wednesday, and <strong class="text-white">Demo Night</strong> on the last Friday of the month.</span></li>
+        </ul>
+        <div class="mt-10 flex flex-wrap items-center gap-x-6 gap-y-3">
+          <a href="/startups/" class="btn-primary">Explore the programme {{ icon('arrow', 'h-4 w-4') }}</a>
+          <p class="text-sm text-white/50">Partners: {{ c.partners|join(' · ') }}</p>
+        </div>
+      </div>
+      <div class="relative min-h-[18rem]">
+        {{ img('community-demo-night', 'Members watching a pitch at Demo Night', 'absolute inset-0 h-full w-full object-cover', '(min-width: 1024px) 600px, 100vw') }}
+        <div class="absolute inset-0 bg-gradient-to-r from-ink via-ink/20 to-transparent lg:via-transparent"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+{# ---------- Testimonials ---------- #}
+<section class="wrap pt-28">
+  <h2 class="section-title text-center">Teams that launched here</h2>
+  <div class="mt-12 grid gap-6 lg:grid-cols-3">
+    {% for t in c.testimonials %}
+    <figure class="card flex flex-col p-8">
+      <svg class="h-8 w-8 text-brand-200" viewBox="0 0 32 32" fill="currentColor" aria-hidden="true"><path d="M9.3 25c-2.7 0-4.8-2.2-4.8-5.4 0-4.6 3.3-9.3 8.4-11.6l1.1 1.8c-2.9 1.6-4.6 3.9-4.9 6.1.4-.1.8-.2 1.3-.2 2.4 0 4.2 1.8 4.2 4.4 0 2.7-2.3 4.9-5.3 4.9zm13.4 0c-2.7 0-4.8-2.2-4.8-5.4 0-4.6 3.3-9.3 8.4-11.6l1.1 1.8c-2.9 1.6-4.6 3.9-4.9 6.1.4-.1.8-.2 1.3-.2 2.4 0 4.2 1.8 4.2 4.4 0 2.7-2.3 4.9-5.3 4.9z"/></svg>
+      <blockquote class="mt-4 flex-1 leading-relaxed text-ink-700">{{ t.quote }}</blockquote>
+      <figcaption class="mt-6 flex items-center gap-3 border-t border-ink/5 pt-5">
+        <span class="flex h-10 w-10 items-center justify-center rounded-full bg-brand-100 font-display text-sm font-bold text-brand-700">{{ t.name.split(' ')[0][0] }}{{ t.name.split(' ')[-1][0] }}</span>
+        <span><span class="block text-sm font-semibold">{{ t.name }}</span><span class="block text-xs text-ink-400">{{ t.role }} · {{ t.centre }}</span></span>
+      </figcaption>
+    </figure>
+    {% endfor %}
+  </div>
+</section>
+
+{# ---------- FAQ preview ---------- #}
+<section class="wrap pt-28">
+  <div class="grid gap-10 lg:grid-cols-12">
+    <div class="lg:col-span-4">
+      <h2 class="section-title">Questions, answered</h2>
+      <p class="section-lede text-base">The short version. There's plenty more on the <a class="font-semibold text-brand-600 hover:underline" href="/faq/">FAQ page</a>.</p>
+    </div>
+    <div class="space-y-3 lg:col-span-8">
+      {% for f in c.home_faq %}
+      <details class="card group p-6 [&_summary::-webkit-details-marker]:hidden" {% if loop.first %}open{% endif %}>
+        <summary class="flex cursor-pointer list-none items-center justify-between gap-4 font-semibold">
+          {{ f.q }}
+          <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-cream-100 text-ink transition group-open:rotate-45">{{ icon('plus', 'h-4 w-4') }}</span>
+        </summary>
+        <p class="mt-3 leading-relaxed text-ink-500">{{ f.a }}</p>
+      </details>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+{{ cta_band() }}
+{% endblock %}

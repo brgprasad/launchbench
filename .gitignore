@@ -1,0 +1,9 @@
+.venv/
+__pycache__/
+build/
+site/dist/
+node_modules/
+*.pyc
+.env
+credentials.json
+token*.json

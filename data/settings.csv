@@ -1,0 +1,9 @@
+key,value,notes
+timezone,Asia/Kolkata,All SLA and due-date maths
+mailbox,teamlaunchbench@gmail.com,"The one address testers write to. The Gmail trigger query is in:inbox -from:me, so mail sent by this account (replies, staff notifications, approvals) never reaches the workflow."
+testrun_reply_to,teamlaunchbench+lb-testrun@gmail.com,"Replies to seed emails from the test runner go here"
+member_classes,facility_issue|customer_billing|change_request,"In demo mode these always resolve to a member: named in the email, else the tester's assigned member (testers tab), else a newly assigned one"
+auto_send,general_query|lead_ack|ticket_ack|noise_job_ack,Replies sent without a human
+needs_approval,customer_billing|change_request|lead_quote|vendor_reply,Sent only after a staff alias clicks Approve
+never_reply,vendor_suspected_fraud|noise_pitch|noise_newsletter,
+demo_mode,TRUE,"TRUE: members are matched from the email's content or assigned to the tester; vendors are matched by the GSTIN on the invoice; the vendor sender-domain check runs only when an [as ...] tag sets the sender. FALSE: production rules, matching members and vendors by sender domain. Either way, replies go to the real sender (or Reply-To), never to a persona's as_email."

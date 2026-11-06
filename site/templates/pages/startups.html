@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon, img %}
+{% from "_partials.html" import page_hero, section_head, cta_band %}
+{% block title %}Startup programme and Founders Plan · {{ c.brand.name }}{% endblock %}
+{% block description %}The Founders Plan: dedicated desks for teams of 1 to 3 at {{ from_fnd|inr }} a seat. Plus 15% off for partner-referred startups, mentor office hours and Demo Night.{% endblock %}
+{% block main %}
+{% set fnd = centres|selectattr('price_fnd')|list %}
+{% set no_fnd = centres|rejectattr('price_fnd')|list %}
+{% set t = c.testimonials[0] %}
+
+{{ page_hero('Startup programme',
+  'Built for the first three years, <span class="text-brand-500">when every rupee counts.</span>',
+  'A low-commitment plan for teams of one to three, a discount for startups our partner funds send us, and a community that has been where you are.',
+  image='space-founders', alt='Two founders working at their desks',
+  primary=('Apply for the Founders Plan', '/book-a-tour/?interest=founders'), secondary=('Partner programme', '#partners')) }}
+
+{# ---------- Founders Plan ---------- #}
+<section id="founders-plan" class="wrap scroll-mt-28 pt-8">
+  <div class="grid gap-8 lg:grid-cols-12">
+    <div class="card relative self-start overflow-hidden p-8 ring-2 ring-brand-500 sm:p-10 lg:sticky lg:top-28 lg:col-span-5">
+      <span class="eyebrow">{{ icon('rocket', 'h-3.5 w-3.5') }} Founders Plan</span>
+      <p class="mt-6"><span class="font-display text-5xl font-extrabold">{{ from_fnd|inr }}</span> <span class="text-ink-400">/ seat / month</span></p>
+      <p class="mt-2 text-sm text-ink-400">+ 18% GST · 1 to 3 dedicated desks</p>
+      <ul class="mt-8 space-y-3">
+        {% for pt in ['Your own dedicated desks, 24×7 access', '10 meeting-room credits a month for the team', 'Just a 3-month lock-in, and 1 month\'s deposit', 'Free entry to Demo Night and mentor office hours', '100 free printed pages per seat, every month'] %}
+        <li class="flex gap-3 text-ink-600"><span class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-leaf-100 text-leaf-600">{{ icon('check', 'h-3.5 w-3.5') }}</span>{{ pt }}</li>
+        {% endfor %}
+      </ul>
+      <a href="/book-a-tour/?interest=founders" class="btn-primary mt-8 w-full py-3.5">Apply now {{ icon('arrow', 'h-4 w-4') }}</a>
+      <p class="mt-4 text-center text-xs text-ink-400">Example: 2 seats at HSR Layout = {{ (2 * centre_by_code['HSR'].price_fnd)|inr }} a month + GST</p>
+    </div>
+
+    <div class="space-y-6 lg:col-span-7">
+      <div class="card p-8">
+        <h2 class="font-display text-xl font-bold">Who can apply</h2>
+        <div class="mt-5 grid gap-4 sm:grid-cols-2">
+          <div class="rounded-2xl bg-cream-100 p-5">
+            <p class="font-semibold">Incorporated less than 3 years ago</p>
+            <p class="mt-1 text-sm text-ink-500">We'll ask for your certificate of incorporation.</p>
+          </div>
+          <div class="rounded-2xl bg-cream-100 p-5">
+            <p class="font-semibold">Or DPIIT-recognised</p>
+            <p class="mt-1 text-sm text-ink-500">Share your DPIIT recognition certificate.</p>
+          </div>
+        </div>
+        <p class="mt-4 text-sm text-ink-400">Sole proprietors and freelancers aren't eligible. A hot desk or day pass is the best fit there.</p>
+      </div>
+      <div class="card p-8">
+        <h2 class="font-display text-xl font-bold">Where it's offered</h2>
+        <div class="mt-5 grid grid-cols-3 gap-3">
+          {% for ctr in fnd %}
+          <a href="/locations/{{ ctr.slug }}/" class="group overflow-hidden rounded-2xl ring-1 ring-ink/5">
+            {{ img(ctr.image, 'Launchbench ' ~ ctr.name, 'aspect-[16/10] w-full object-cover', '220px') }}
+            <p class="p-3 text-sm font-semibold group-hover:text-brand-600">{{ ctr.name }}</p>
+          </a>
+          {% endfor %}
+        </div>
+        <p class="mt-4 text-sm text-ink-400">At {% for ctr in no_fnd %}{{ ctr.name.split(' (')[0] }}{{ ' and ' if not loop.last }}{% endfor %}, a regular dedicated desk already costs less: {% for ctr in no_fnd %}{{ ctr.price_ded|inr }}{{ ' and ' if not loop.last }}{% endfor %} a seat.</p>
+      </div>
+      <div class="card flex gap-5 p-8">
+        <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-brand-50 text-brand-600 ring-1 ring-brand-100">{{ icon('sparkle', 'h-6 w-6') }}</span>
+        <div>
+          <h2 class="font-display text-xl font-bold">When you outgrow it</h2>
+          <p class="mt-2 text-sm leading-relaxed text-ink-500">Hired your fourth person? Congratulations. Move to regular dedicated desks or a cabin at any time, with no fee. The new plan's lock-in starts on the day you move.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+{# ---------- Partner programme ---------- #}
+<section id="partners" class="wrap scroll-mt-28 pt-28">
+  <div class="relative overflow-hidden rounded-[2.5rem] bg-ink text-white">
+    <div class="pointer-events-none absolute -left-24 -top-24 h-80 w-80 rounded-full bg-brand-500/25 blur-3xl"></div>
+    <div class="relative grid gap-10 p-8 sm:p-12 lg:grid-cols-2 lg:p-16">
+      <div>
+        <span class="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-brand-300">{{ icon('shield', 'h-3.5 w-3.5') }} Partner programme</span>
+        <h2 class="mt-6 font-display text-3xl font-extrabold leading-tight sm:text-4xl">{{ prices['DISC-PARTNER'] }}% off seat fees for your first 6 months.</h2>
+        <p class="mt-5 text-white/75">If one of our partner accelerators or funds sends you our way, your seat fees are {{ prices['DISC-PARTNER'] }}% lower for the first six months, on any plan at any centre. Just send us the referral email from the partner, or show us your cohort or portfolio listing.</p>
+        <ul class="mt-8 space-y-3">
+          {% for p in c.partners %}
+          <li class="flex items-center gap-3 rounded-2xl bg-white/5 px-5 py-4 ring-1 ring-white/10"><span class="h-2 w-2 rounded-full bg-brand-400"></span><span class="font-display font-bold">{{ p }}</span></li>
+          {% endfor %}
+        </ul>
+      </div>
+      <div class="self-start rounded-[2rem] bg-white p-8 text-ink">
+        <p class="text-xs font-semibold uppercase tracking-wider text-brand-600">Worked example</p>
+        <h3 class="mt-2 font-display text-xl font-bold">A partner-referred team takes an 8-seat cabin at HSR Layout on a 12-month lock-in</h3>
+        {% set base = 8 * centre_by_code['HSR'].price_cab %}
+        <dl class="mt-6 divide-y divide-ink/5 text-sm">
+          <div class="flex justify-between py-3"><dt class="text-ink-500">List price, 8 × {{ centre_by_code['HSR'].price_cab|inr }}</dt><dd class="font-medium">{{ base|inr }}</dd></div>
+          <div class="flex justify-between gap-4 py-3"><dt class="text-ink-500">Months 1–6: partner discount ({{ prices['DISC-PARTNER'] }}%)</dt><dd class="font-display text-lg font-bold text-brand-600">{{ (base * (100 - prices['DISC-PARTNER']) / 100)|inr }}</dd></div>
+          <div class="flex justify-between gap-4 py-3"><dt class="text-ink-500">Months 7–12: 12-month lock-in discount ({{ prices['DISC-LOCKIN-12'] }}%)</dt><dd class="font-display text-lg font-bold">{{ (base * (100 - prices['DISC-LOCKIN-12']) / 100)|inr }}</dd></div>
+        </dl>
+        <p class="mt-4 text-xs text-ink-400">Per month, excluding GST. The partner and lock-in discounts don't stack: whichever is higher applies in each month.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+{# ---------- Community ---------- #}
+<section class="wrap pt-28">
+  {{ section_head('More than a desk', 'The programme is the people. Here\'s what members get beyond the space.', link=('Events calendar', '/events/#community')) }}
+  <div class="mt-12 grid gap-6 md:grid-cols-3">
+    {% for ic, title, text in [
+      ('users', 'Mentor office hours', 'Drop-in sessions with mentors from our partner funds, every second Wednesday at Koramangala and Whitefield. Next: ' ~ office_hours[0].nice ~ '.'),
+      ('rocket', 'Demo Night', 'On the last Friday of every month, one member startup pitches to the community at Koramangala. Next: ' ~ demo_nights[0].nice ~ '.'),
+      ('check', 'A free trial day', 'Teams of 5 or more can try their shortlisted space free for a day before signing anything.'),
+    ] %}
+    <div class="card p-8">
+      <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-50 text-brand-600 ring-1 ring-brand-100">{{ icon(ic, 'h-6 w-6') }}</div>
+      <h3 class="mt-6 text-lg font-bold">{{ title }}</h3>
+      <p class="mt-2 text-sm leading-relaxed text-ink-500">{{ text }}</p>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+
+{# ---------- Testimonial ---------- #}
+<section class="wrap pt-28">
+  <figure class="mx-auto max-w-3xl text-center">
+    <svg class="mx-auto h-10 w-10 text-brand-200" viewBox="0 0 32 32" fill="currentColor" aria-hidden="true"><path d="M9.3 25c-2.7 0-4.8-2.2-4.8-5.4 0-4.6 3.3-9.3 8.4-11.6l1.1 1.8c-2.9 1.6-4.6 3.9-4.9 6.1.4-.1.8-.2 1.3-.2 2.4 0 4.2 1.8 4.2 4.4 0 2.7-2.3 4.9-5.3 4.9zm13.4 0c-2.7 0-4.8-2.2-4.8-5.4 0-4.6 3.3-9.3 8.4-11.6l1.1 1.8c-2.9 1.6-4.6 3.9-4.9 6.1.4-.1.8-.2 1.3-.2 2.4 0 4.2 1.8 4.2 4.4 0 2.7-2.3 4.9-5.3 4.9z"/></svg>
+    <blockquote class="mt-6 font-display text-2xl font-bold leading-snug text-ink sm:text-3xl">{{ t.quote }}</blockquote>
+    <figcaption class="mt-8 text-sm"><span class="font-semibold">{{ t.name }}</span> <span class="text-ink-400">· {{ t.role }} · {{ t.centre }}</span></figcaption>
+  </figure>
+</section>
+
+{{ cta_band('Building something? Come and build it here.', 'Book a tour of any Founders Plan centre. Bring your certificate of incorporation or DPIIT recognition. Memberships start on the 1st or the 16th of any month.', href='/book-a-tour/?interest=founders', label='Apply for the Founders Plan') }}
+{% endblock %}

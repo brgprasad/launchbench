@@ -1,0 +1,127 @@
+{
+  "name": "LB · setup Gmail labels (one-off)",
+  "nodes": [
+    {
+      "id": "bc792941-a487-4172-8065-3f74c3ef2bf2",
+      "name": "Run once",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "6f10080a-a9ee-4cd6-a7ff-cfc159d36f17",
+      "name": "List labels",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        224,
+        0
+      ],
+      "parameters": {
+        "resource": "label",
+        "operation": "getAll",
+        "returnAll": true
+      },
+      "executeOnce": true,
+      "webhookId": "4437bc3e-53d0-4dd9-bcc3-a0bc35832651",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "48BDBjPeX8UnzPvh",
+          "name": "teamlaunchbench@gmail.com"
+        }
+      }
+    },
+    {
+      "id": "5338db6d-06fc-4d73-a2c5-ac94600ed6b0",
+      "name": "Missing labels",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        448,
+        0
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "// Every Launchbench label (docs/workflow-design.md section 6), parents before\n// children so Gmail nests them. Labels that already exist are skipped.\nconst WANT = ['Launchbench', 'Launchbench/Error',\n  'Launchbench/Lead', 'Launchbench/Lead/Hot', 'Launchbench/Lead/Warm', 'Launchbench/Lead/Cold',\n  'Launchbench/Issue', 'Launchbench/Issue/P1', 'Launchbench/Issue/P2', 'Launchbench/Issue/P3', 'Launchbench/Issue/P4',\n  'Launchbench/Billing',\n  'Launchbench/Vendor', 'Launchbench/Vendor/Pass', 'Launchbench/Vendor/Hold', 'Launchbench/Vendor/Flag', 'Launchbench/Vendor/Fraud',\n  'Launchbench/Change', 'Launchbench/Query', 'Launchbench/Noise', 'Launchbench/Awaiting approval',\n  'Launchbench/Demo', 'Launchbench/Demo/Assigned member'];\nconst have = $input.all().map(i => i.json.name);\nreturn WANT.filter(n => !have.includes(n)).map(name => ({ json: { name } }));"
+      }
+    },
+    {
+      "id": "e574897a-1e17-4be5-989d-0242b0fd36ef",
+      "name": "Create label",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        672,
+        0
+      ],
+      "parameters": {
+        "resource": "label",
+        "operation": "create",
+        "name": "={{ $json.name }}",
+        "options": {
+          "labelListVisibility": "labelShow",
+          "messageListVisibility": "show"
+        }
+      },
+      "webhookId": "49b0bb68-4d61-4542-ab39-686544f3ab1b",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "48BDBjPeX8UnzPvh",
+          "name": "teamlaunchbench@gmail.com"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Run once": {
+      "main": [
+        [
+          {
+            "node": "List labels",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "List labels": {
+      "main": [
+        [
+          {
+            "node": "Missing labels",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Missing labels": {
+      "main": [
+        [
+          {
+            "node": "Create label",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "nodeGroups": [],
+  "meta": {
+    "aiBuilderAssisted": true,
+    "builderVariant": "mcp"
+  },
+  "tags": [],
+  "id": "d7wbvnA6jmXYeaKQ",
+  "active": false,
+  "pinData": {}
+}

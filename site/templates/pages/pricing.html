@@ -1,0 +1,191 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon, img %}
+{% from "_partials.html" import page_hero, section_head, cta_band %}
+{% block title %}Pricing · {{ c.brand.name }} coworking in Bengaluru{% endblock %}
+{% block description %}Published prices for hot desks, dedicated desks, private cabins, meeting rooms, event halls, day passes and virtual offices at all 5 Launchbench centres.{% endblock %}
+{% block main %}
+
+{{ page_hero('Pricing',
+  'Published prices. <span class="text-brand-500">No surprises.</span>',
+  'Every price we charge is on this page, centre by centre. Prices are per month and exclude 18% GST. The longer you commit, the less you pay.') }}
+
+{# ---------- Seat plans by centre ---------- #}
+{% set first = centres[0] %}
+<section class="wrap" data-centre-scope>
+  <div class="card overflow-hidden">
+    <div class="flex flex-col gap-4 border-b border-ink/5 p-5 sm:p-6 lg:flex-row lg:items-center lg:justify-between">
+      <h2 class="font-display text-xl font-bold">Seat plans by centre</h2>
+      <div data-centre-tabs role="tablist" aria-label="Choose a centre" class="flex flex-wrap gap-1 rounded-2xl bg-cream-100 p-1 sm:rounded-full">
+        {% for ctr in centres %}
+        <button type="button" role="tab" data-centre="{{ ctr.code }}" aria-selected="{{ 'true' if loop.first else 'false' }}" class="shrink-0 rounded-full px-4 py-2 text-sm font-semibold transition {{ 'bg-ink text-white' if loop.first else 'text-ink-600' }}">{{ ctr.name.split(' (')[0] }}</button>
+        {% endfor %}
+      </div>
+    </div>
+
+    {% macro pricecell(attr) -%}
+    <span data-price {% for ctr in centres %}{% if ctr[attr] %}data-price-{{ ctr.code|lower }}="{{ ctr[attr]|inr }}" {% endif %}{% endfor %}>{{ first[attr]|inr if first[attr] else '—' }}</span>
+    {%- endmacro %}
+    {% set plans = [
+      ('Hot desk', 'price_hot', 'Any open seat · 8 am–9 pm, Mon–Sat', 'Month-to-month', '2 per seat', '/workspaces/#hot-desk'),
+      ('Dedicated desk', 'price_ded', 'Your own desk · 24×7', '3 months', '4 per seat', '/workspaces/#dedicated-desk'),
+      ('Private cabin', 'price_cab', 'Per seat of cabin capacity · 24×7', '6 months', '4 per seat', '/workspaces/#private-cabin'),
+      ('Founders Plan', 'price_fnd', '1 to 3 desks for early startups · 24×7', '3 months', '10 per team', '/startups/'),
+    ] %}
+    <div class="divide-y divide-ink/5">
+      {% for title, attr, sub, lock, credits, href in plans %}
+      <div class="grid items-center gap-4 p-5 sm:grid-cols-12 sm:p-6 transition" {% if attr == 'price_fnd' %}data-optional{% endif %}>
+        <div class="sm:col-span-5">
+          <a href="{{ href }}" class="font-display text-lg font-bold hover:text-brand-600">{{ title }}</a>
+          <p class="mt-0.5 text-sm text-ink-500">{{ sub }}</p>
+        </div>
+        <div class="flex gap-6 text-sm sm:col-span-4">
+          <div><p class="text-xs text-ink-400">Min. lock-in</p><p class="font-medium text-ink-700">{{ lock }}</p></div>
+          <div><p class="text-xs text-ink-400">Room credits / mo</p><p class="font-medium text-ink-700">{{ credits }}</p></div>
+        </div>
+        <div class="sm:col-span-3 sm:text-right">
+          <p><span class="font-display text-3xl font-extrabold text-ink">{{ pricecell(attr) }}</span></p>
+          <p class="text-xs text-ink-400">per seat / month + GST</p>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+
+    {% for ctr in centres %}
+    <div data-centre-panel="{{ ctr.code }}" class="{{ '' if loop.first else 'hidden' }} grid gap-6 border-t border-ink/5 bg-cream/60 p-5 text-sm sm:p-6 md:grid-cols-3">
+      <div>
+        <p class="font-semibold text-ink">Cabin sizes at {{ ctr.name }}</p>
+        <p class="mt-1 text-ink-500">{{ ctr.cabin_sizes|join(', ') }} seats</p>
+      </div>
+      <div>
+        <p class="font-semibold text-ink">Example: a 16-seat cabin, 12-month lock-in</p>
+        <p class="mt-1 text-ink-500">16 × {{ ctr.price_cab|inr }}, less 10% = <strong class="text-ink">{{ (16 * ctr.price_cab * 0.9)|inr }}</strong> a month + GST</p>
+      </div>
+      <div>
+        <p class="font-semibold text-ink">{% if not ctr.price_fnd %}Why no Founders Plan here?{% else %}Car parking{% endif %}</p>
+        <p class="mt-1 text-ink-500">{% if not ctr.price_fnd %}A regular dedicated desk at {{ ctr.name }} already costs less, at {{ ctr.price_ded|inr }} a seat.{% else %}{{ prices['PARK-CAR-' ~ ctr.code]|inr }} per car per month{{ ' (waitlist)' if ctr.code == 'IND' else '' }}. <a class="font-semibold text-brand-600 hover:underline" href="/locations/{{ ctr.slug }}/">About this centre</a>{% endif %}</p>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  <p class="mt-4 text-sm text-ink-400">Private cabins are billed on their full capacity, not on headcount. A team of 14 takes a 16-seat cabin.</p>
+</section>
+
+{# ---------- Discounts ---------- #}
+<section class="wrap pt-24">
+  {{ section_head('Commit longer, pay less', 'Lock-in discounts apply to seat fees. Add-ons, usage, meeting rooms and events are charged at the listed rates.') }}
+  <div class="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+    {% for pct, title, text, hi in [
+      (0, 'Month-to-month or 3 months', 'Hot desks can stay month-to-month. Desks and the Founders Plan start with 3 months.', false),
+      (prices['DISC-LOCKIN-6'], '6-month lock-in', 'The minimum for private cabins, and an easy saving for settled teams.', false),
+      (prices['DISC-LOCKIN-12'], '12-month lock-in', 'Our best rate for teams that know where they will be next year.', true),
+      (prices['DISC-PARTNER'], 'Partner-referred startups', 'Off seat fees for the first 6 months, for startups referred by our partner funds.', false),
+    ] %}
+    <div class="card relative p-6 {{ 'ring-2 ring-brand-500' if hi else '' }}">
+      {% if hi %}<span class="absolute -top-3 left-6 rounded-full bg-brand-500 px-2.5 py-0.5 text-xs font-semibold text-white">Best value</span>{% endif %}
+      <p class="font-display text-4xl font-extrabold {{ 'text-brand-500' if pct else 'text-ink-300' }}">{{ pct }}%</p>
+      <p class="mt-3 font-semibold">{{ title }}</p>
+      <p class="mt-1 text-sm leading-relaxed text-ink-500">{{ text }}</p>
+    </div>
+    {% endfor %}
+  </div>
+  <p class="mt-4 text-sm text-ink-400">The partner discount doesn't stack with a lock-in discount: whichever is higher applies in each month. <a href="/startups/#partners" class="font-semibold text-brand-600 hover:underline">How the partner programme works</a></p>
+</section>
+
+{# ---------- Meeting rooms & events ---------- #}
+<section class="wrap pt-24">
+  {{ section_head('Meeting rooms and event halls', 'Every plan includes monthly credits. Extra hours are billed to members at 20% off the list rate. Non-members are welcome at list rates.', link=('Rooms and events', '/events/')) }}
+  <div class="mt-10 grid gap-6 lg:grid-cols-2">
+    <div class="card overflow-x-auto">
+      <table class="w-full min-w-[26rem] text-left text-sm">
+        <thead><tr class="border-b border-ink/5 text-ink-400"><th class="p-5 font-medium">Room, per hour</th><th class="p-5 font-medium">List rate</th><th class="p-5 font-medium">Members</th></tr></thead>
+        <tbody>
+          {% for sku, name, sub in [('MR-4', '4-seater', 'Pre-Seed, Seed'), ('MR-8', '8-seater', 'Series A, Series B'), ('MR-12', '12-seat boardroom', 'IPO · 2 credits per hour')] %}
+          <tr class="border-b border-ink/5 last:border-0">
+            <td class="p-5"><p class="font-semibold text-ink">{{ name }}</p><p class="text-xs text-ink-400">{{ sub }}</p></td>
+            <td class="p-5 text-ink-700">{{ prices[sku]|inr }}</td>
+            <td class="p-5 font-semibold text-ink">{{ (prices[sku] * (100 - prices['DISC-MEMBER-ROOMS']) / 100)|inr }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="card overflow-x-auto">
+      <table class="w-full min-w-[26rem] text-left text-sm">
+        <thead><tr class="border-b border-ink/5 text-ink-400"><th class="p-5 font-medium">Event hall</th><th class="p-5 font-medium">Half day</th><th class="p-5 font-medium">Full day</th></tr></thead>
+        <tbody>
+          {% for ctr in centres if ctr.has_event_hall %}
+          <tr class="border-b border-ink/5 last:border-0">
+            <td class="p-5"><p class="font-semibold text-ink">{{ ctr.name }}</p><p class="text-xs text-ink-400">{{ ctr.hall_size }} people, theatre-style</p></td>
+            <td class="p-5 text-ink-700">{{ prices['EVT-' ~ ctr.code ~ '-HALF']|inr }}<span class="block text-xs text-ink-400">up to 5 hours</span></td>
+            <td class="p-5 text-ink-700">{{ prices['EVT-' ~ ctr.code ~ '-FULL']|inr }}<span class="block text-xs text-ink-400">up to 10 hours</span></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <p class="border-t border-ink/5 p-5 text-xs text-ink-400">Members get 20% off. AV, projector and 2 wireless microphones included. 50% advance to confirm.</p>
+    </div>
+  </div>
+</section>
+
+{# ---------- Passes, virtual office, add-ons ---------- #}
+<section class="wrap pt-24">
+  <div class="grid gap-6 lg:grid-cols-12">
+    <div class="lg:col-span-5">
+      <h2 class="section-title">Passes and virtual office</h2>
+      <div class="card mt-8 divide-y divide-ink/5">
+        {% for name, sku, unit, note in [
+          ('Day pass', 'DAY-ALL', '/ person / day', 'Walk in to any centre. Includes up to 1 hour in a 4-seater, subject to availability.'),
+          ('Guest day pass', 'GUEST-ALL', '/ person / day', 'Booked by a member for a visitor working at a desk.'),
+          ('Virtual office: Basic', 'VO-BASIC', '/ month', 'Business address and mail handling. Billed annually.'),
+          ('Virtual office: GST Registration', 'VO-GST', '/ month', 'Basic, plus the documents for GST and MCA registration. Billed annually.'),
+        ] %}
+        <div class="flex items-start justify-between gap-6 p-5">
+          <div><p class="font-semibold">{{ name }}</p><p class="mt-0.5 text-sm text-ink-500">{{ note }}</p></div>
+          <p class="shrink-0 text-right"><span class="font-display text-lg font-bold">{{ prices[sku]|inr }}</span><span class="block text-xs text-ink-400">{{ unit }}</span></p>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    <div class="lg:col-span-7">
+      <h2 class="section-title">Add-ons</h2>
+      <div class="card mt-8 divide-y divide-ink/5 text-sm">
+        {% set hsr = prices['PARK-CAR-HSR'] %}
+        {% for name, price, unit in [
+          ('Car parking: Koramangala, Indiranagar', prices['PARK-CAR-KOR']|inr, 'per car / month'),
+          ('Car parking: HSR Layout, Whitefield, Hebbal', hsr|inr, 'per car / month'),
+          ('Two-wheeler parking, all centres', prices['PARK-BIKE-ALL']|inr, 'per vehicle / month'),
+          ('Personal locker', prices['LOCKER-ALL']|inr, 'per month'),
+          ('24×7 access for hot desks', prices['ACCESS247-HOT']|inr, 'per seat / month'),
+          ('Static public IP (private VLAN for cabins is free)', prices['STATICIP-ALL']|inr, 'per IP / month'),
+          ('Printing beyond the free quota', prices['PRINT-BW']|inr ~ ' / ' ~ prices['PRINT-COL']|inr, 'per page, B&W / colour'),
+          ('Replacement access card', prices['CARD-REPLACE']|inr, 'per card'),
+        ] %}
+        <div class="flex items-center justify-between gap-6 px-5 py-4">
+          <p class="text-ink-700">{{ name }}</p>
+          <p class="shrink-0 text-right"><span class="font-semibold text-ink">{{ price }}</span> <span class="text-xs text-ink-400">{{ unit }}</span></p>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</section>
+
+{# ---------- Fine print ---------- #}
+<section class="wrap pt-24">
+  <div class="grid gap-8 rounded-[2rem] bg-cream-100 p-8 sm:p-10 md:grid-cols-3">
+    {% for ic, title, text in [
+      ('shield', 'Security deposit', 'Refundable and interest-free: 1 month of seat fees for hot desks and the Founders Plan, 2 months for dedicated desks and cabins. No GST on deposits, refunded within 30 days of exit.'),
+      ('calendar', 'Billing', 'Invoices go out on the 1st and are due by the 7th. Seat fees are billed in advance; meeting-room overage and printing in arrears. Pay by NEFT, RTGS, IMPS or UPI.'),
+      ('sparkle', 'GST and escalation', 'All prices exclude 18% GST and are effective from 1 April 2026. Seat fees rise by 6% on each contract anniversary for memberships beyond 12 months.'),
+    ] %}
+    <div>
+      <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-brand-600 shadow-soft">{{ icon(ic) }}</div>
+      <h3 class="mt-4 font-semibold">{{ title }}</h3>
+      <p class="mt-1 text-sm leading-relaxed text-ink-500">{{ text }}</p>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+
+{{ cta_band('Want a quote for your team?', 'Tell us your team size and preferred centre, and we\'ll show you the spaces that fit when you come in for a tour.', label='Book a tour', alt=('See our locations', '/locations/')) }}
+{% endblock %}

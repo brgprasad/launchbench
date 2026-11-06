@@ -1,0 +1,309 @@
+{
+ "11": {
+  "now": "2026-11-03T11:48:00+05:30",
+  "from": "Rahul Verma <rahul@tiffinly.in>",
+  "subject": "Extra ₹11,200 on November invoice?",
+  "as_alias": "tiffinly",
+  "classifier": {
+   "desk": "billing",
+   "intents": [
+    {
+     "class": "customer_billing",
+     "subclass": "dispute",
+     "summary": "Rahul Verma from Tiffinly disputes the meeting-room overage charge of ₹11,200 on invoice LB/26-27/0426."
+    }
+   ],
+   "language": "en",
+   "sentiment": "neutral",
+   "churn_risk": false,
+   "identity_clues": {
+    "company": "Tiffinly",
+    "member_id": "",
+    "invoice_numbers": [
+     "LB/26-27/0426"
+    ],
+    "gstin": "",
+    "cabin": "",
+    "centre": ""
+   },
+   "lead": {
+    "team_size": 0,
+    "centres": [],
+    "near_metro": false,
+    "move_in": "",
+    "budget_inr": 0,
+    "budget_includes_gst": "",
+    "plan_interest": "",
+    "partner": "",
+    "incorporated": ""
+   },
+   "issue": {
+    "location": "",
+    "category": "",
+    "suggested_priority": "",
+    "since": "",
+    "repeat_claimed": false
+   },
+   "billing": {
+    "invoice_numbers": [
+     "LB/26-27/0426"
+    ],
+    "topic": "dispute",
+    "new_gstin": "",
+    "tds_section": ""
+   },
+   "change": {
+    "type": "",
+    "seats_from": 0,
+    "seats_to": 0,
+    "effective": ""
+   },
+   "attachments_claimed_but_missing": false,
+   "fraud_signals": [],
+   "confidence": 1,
+   "reasoning": "The email is an inquiry and dispute regarding a meeting-room overage charge on an invoice, which falls under customer billing."
+  }
+ },
+ "12": {
+  "now": "2026-11-04T10:05:00+05:30",
+  "from": "Megha Sharma <megha@cartwheel.shop>",
+  "subject": "Invoices after we vacated + deposit refund not received",
+  "as_alias": "cartwheel",
+  "classifier": {
+   "desk": "billing",
+   "intents": [
+    {
+     "class": "customer_billing",
+     "subclass": "dispute",
+     "summary": "Member states they vacated on Sept 30 and disputes post-exit invoices LB/26-27/0424 and LB/26-27/0447, while also inquiring about their delayed security deposit refund of ₹26,000."
+    }
+   ],
+   "language": "en",
+   "sentiment": "negative",
+   "churn_risk": false,
+   "identity_clues": {
+    "company": "Cartwheel Commerce",
+    "member_id": "",
+    "invoice_numbers": [
+     "LB/26-27/0424",
+     "LB/26-27/0447"
+    ],
+    "gstin": "",
+    "cabin": "",
+    "centre": "WHF"
+   },
+   "lead": {},
+   "issue": {},
+   "billing": {
+    "invoice_numbers": [
+     "LB/26-27/0424",
+     "LB/26-27/0447"
+    ],
+    "topic": "deposit refund and invoice dispute after exit",
+    "new_gstin": "",
+    "tds_section": ""
+   },
+   "change": {},
+   "attachments_claimed_but_missing": false,
+   "fraud_signals": [],
+   "confidence": 1,
+   "reasoning": "The email from Megha Sharma at Cartwheel Commerce questions invoices received after they vacated their hot desks at Whitefield and inquires about a delayed security deposit refund. This is a billing dispute and refund inquiry routed to the billing desk."
+  }
+ },
+ "13": {
+  "now": "2026-11-03T15:22:00+05:30",
+  "from": "Abhishek Nair <abhishek@kiraaya.in>",
+  "subject": "GSTIN change - please update invoices",
+  "as_alias": "kiraaya",
+  "classifier": {
+   "desk": "billing",
+   "intents": [
+    {
+     "class": "customer_billing",
+     "subclass": "gstin_change",
+     "summary": "Request to update company GSTIN and re-issue October and November invoices."
+    }
+   ],
+   "language": "en",
+   "sentiment": "neutral",
+   "churn_risk": false,
+   "identity_clues": {
+    "company": "Kiraaya Rentals",
+    "member_id": "",
+    "invoice_numbers": [],
+    "gstin": "29AALCK9914T2Z4",
+    "cabin": "",
+    "centre": ""
+   },
+   "lead": {
+    "team_size": 0,
+    "centres": [],
+    "near_metro": false,
+    "move_in": "",
+    "budget_inr": 0,
+    "budget_includes_gst": "",
+    "plan_interest": "",
+    "partner": "",
+    "incorporated": ""
+   },
+   "issue": {
+    "location": "",
+    "category": "",
+    "suggested_priority": "",
+    "since": "",
+    "repeat_claimed": false
+   },
+   "billing": {
+    "invoice_numbers": [],
+    "topic": "gst_change",
+    "new_gstin": "29AALCK9914T2Z4",
+    "tds_section": ""
+   },
+   "change": {
+    "type": "",
+    "seats_from": 0,
+    "seats_to": 0,
+    "effective": ""
+   },
+   "attachments_claimed_but_missing": true,
+   "fraud_signals": [],
+   "confidence": 1,
+   "reasoning": "The sender is requesting a GSTIN update and re-issuance of invoices with the new GSTIN, which falls under customer billing. They mentioned an attached certificate but none was provided."
+  }
+ },
+ "14": {
+  "now": "2026-11-04T12:40:00+05:30",
+  "from": "Venkatesh Iyer <venkatesh@dhoopsolar.in>",
+  "subject": "TDS on your invoices",
+  "as_alias": "dhoop",
+  "classifier": {
+   "desk": "billing",
+   "intents": [
+    {
+     "class": "customer_billing",
+     "subclass": "tds",
+     "summary": "Dhoop Solar requests to deduct TDS under section 194C at 2% starting from the November invoice."
+    }
+   ],
+   "language": "en",
+   "sentiment": "neutral",
+   "churn_risk": false,
+   "identity_clues": {
+    "company": "Dhoop Solar",
+    "member_id": "",
+    "invoice_numbers": [],
+    "gstin": "",
+    "cabin": "",
+    "centre": ""
+   },
+   "lead": {
+    "team_size": 0,
+    "centres": [],
+    "near_metro": false,
+    "move_in": "",
+    "budget_inr": 0,
+    "budget_includes_gst": "",
+    "plan_interest": "",
+    "partner": "",
+    "incorporated": ""
+   },
+   "issue": {
+    "location": "",
+    "category": "",
+    "suggested_priority": "",
+    "since": "",
+    "repeat_claimed": false
+   },
+   "billing": {
+    "invoice_numbers": [],
+    "topic": "tds",
+    "new_gstin": "",
+    "tds_section": "194C"
+   },
+   "change": {
+    "type": "",
+    "seats_from": 0,
+    "seats_to": 0,
+    "effective": ""
+   },
+   "attachments_claimed_but_missing": false,
+   "fraud_signals": [],
+   "confidence": 1,
+   "reasoning": "The email is from a member company discussing TDS deduction rates on their upcoming invoices, which falls under customer billing according to company policy."
+  }
+ },
+ "15": {
+  "now": "2026-11-03T13:15:00+05:30",
+  "from": "Neha Kapoor <neha@swasthai.in>",
+  "subject": "Wi-Fi issue + need October invoice copy",
+  "as_alias": "swasth",
+  "classifier": {
+   "desk": "support",
+   "intents": [
+    {
+     "class": "facility_issue",
+     "subclass": "internet",
+     "summary": "Cabin 1D Wi-Fi keeps dropping every 15-20 minutes for the last 2 days"
+    },
+    {
+     "class": "customer_billing",
+     "subclass": "invoice_copy",
+     "summary": "Requesting a copy of the October invoice for auditors"
+    }
+   ],
+   "sender_name": "Neha",
+   "language": "en",
+   "sentiment": "neutral",
+   "churn_risk": false,
+   "identity_clues": {
+    "company": "Swasth AI",
+    "member_id": "",
+    "invoice_numbers": [],
+    "gstin": "",
+    "cabin": "Cabin 1D",
+    "centre": "HEB"
+   },
+   "lead": {
+    "team_size": 0,
+    "centres": [],
+    "area": "",
+    "area_centres": [],
+    "near_metro": false,
+    "move_in": "",
+    "timeline_firm": false,
+    "budget_inr": 0,
+    "budget_includes_gst": "unclear",
+    "plan_interest": "",
+    "partner": "",
+    "incorporated": "",
+    "event_guests": 0,
+    "event_hours": 0
+   },
+   "issue": {
+    "location": "Cabin 1D, Hebbal",
+    "category": "internet",
+    "suggested_priority": "P2",
+    "since": "2026-11-01",
+    "repeat_claimed": false
+   },
+   "billing": {
+    "invoice_numbers": [],
+    "topic": "invoice_copy",
+    "new_gstin": "",
+    "tds_section": ""
+   },
+   "change": {
+    "type": "",
+    "seats_from": 0,
+    "seats_to": 0,
+    "effective": "",
+    "to_centre": ""
+   },
+   "attachments_claimed_but_missing": false,
+   "fraud_signals": [],
+   "confidence": 0.98,
+   "reasoning": "The email reports an ongoing Wi-Fi issue in Cabin 1D at Hebbal (P2 facility issue) and requests a copy of the October invoice for billing purposes.",
+   "guard_removed": []
+  }
+ }
+}

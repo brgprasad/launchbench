@@ -1,0 +1,144 @@
+# Marketing copy for the Launchbench website.
+# Facts (prices, centres, availability, policies) are NOT written here: the
+# build reads them from data/*.csv and kb/*.md so the site and the AI agree.
+
+brand:
+  name: Launchbench
+  legal: Launchbench Workspaces Pvt. Ltd.
+  tagline: Where Bengaluru startups launch.
+  email: teamlaunchbench@gmail.com
+  gstin: 29AAFCL4821M1Z7
+  registered_office: 3rd Floor, Sprint House, 80 Feet Road, 4th Block, Koramangala, Bengaluru 560034
+  founded: 2019
+  member_companies: 180
+  members: 1250
+  disclaimer: Launchbench Workspaces is a fictional company, created to demonstrate AI email automation. Its people, buildings and numbers are invented.
+
+announcement:
+  text: "Demo Night, last Friday of every month at Koramangala: one member startup pitches, the whole community shows up."
+  link: /events/
+
+nav:
+  - { label: Workspaces, href: /workspaces/ }
+  - { label: Pricing, href: /pricing/ }
+  - { label: Locations, href: /locations/ }
+  - { label: Meeting rooms & events, href: /events/ }
+  - { label: Startups, href: /startups/ }
+  - { label: FAQ, href: /faq/ }
+
+hero:
+  eyebrow: 5 centres across Bengaluru
+  title_a: Where Bengaluru
+  title_b: startups launch.
+  lede: >-
+    Flexible desks and private cabins for teams of 1 to 30, from seed stage to
+    Series B. Month-to-month hot desks, 24×7 access, fast internet that doesn't
+    blink when the power does, and a community that turns up for each other's
+    demo days.
+
+centres:
+  KOR:
+    name: Koramangala
+    slug: koramangala
+    image: centre-kor
+    metro_short: Bus routes at the door
+    lat: 12.9343
+    lon: 77.6268
+    blurb: Our flagship, two floors on 80 Feet Road, with the Burn Rate Café, nap pods, a rooftop terrace and the event hall where Demo Night happens.
+  IND:
+    name: Indiranagar
+    slug: indiranagar
+    image: centre-ind
+    metro_short: 7-min walk to Indiranagar Metro
+    lat: 12.9719
+    lon: 77.6412
+    blurb: The most central address we have, a short walk from the Purple Line, with a podcast and recording room that members book like a meeting room.
+  HSR:
+    name: HSR Layout
+    slug: hsr-layout
+    image: centre-hsr
+    metro_short: 1.5 km to Silk Board
+    lat: 12.9150
+    lon: 77.6480
+    blurb: Our only pet-friendly centre, with a Paws Zone on the ground floor, an outdoor courtyard and plenty of parking.
+  WHF:
+    name: Whitefield
+    slug: whitefield
+    image: centre-whf
+    metro_short: 10-min walk to Kadugodi Tree Park Metro
+    lat: 12.9870
+    lon: 77.7380
+    blurb: Our largest centre, close to the tech parks, with cabins for teams of up to 30, shower rooms and a 120-seat event hall.
+  HEB:
+    name: Hebbal (Manyata)
+    slug: hebbal
+    image: centre-heb
+    metro_short: Free shuttle from Hebbal flyover
+    lat: 13.0450
+    lon: 77.6200
+    blurb: Our best-value centre, on the Outer Ring Road next to Manyata Tech Park and the quickest run to the airport.
+
+features:
+  - icon: wifi
+    title: 1 Gbps with failover
+    text: "A leased line at every centre, with a second link that takes over when the first one doesn't."
+  - icon: zap
+    title: 100% power backup
+    text: "Bengaluru power cuts are somebody else's problem. Your laptop won't notice."
+  - icon: clock
+    title: 24×7 for your team
+    text: "Dedicated desks and cabins come with round-the-clock card access. Hot desks can add it."
+  - icon: coffee
+    title: Unlimited tea and coffee
+    text: "A pantry at every centre, and the Burn Rate Café in Koramangala for everything else."
+  - icon: calendar
+    title: Meeting-room credits
+    text: "Every plan includes monthly credits for rooms named Pre-Seed, Seed, Series A, Series B and, of course, IPO."
+  - icon: users
+    title: A community team
+    text: "Staffed reception, mentor office hours and Demo Night, so you're never building alone."
+
+partners:
+  - Pragati Launch Accelerator
+  - Kaveri Seed Partners
+  - Saffron Angels Network
+
+logo_strip:
+  - Tiffinly
+  - Paysetu
+  - KrishiGrid
+  - Swasth AI
+  - Ledgerly
+  - Quanta Robotics
+  - Pixelpatch Games
+  - LingoLab AI
+
+testimonials:
+  - quote: >-
+      We started with two Founders Plan desks in HSR and a referral from Kaveri. The partner discount
+      took real pressure off our first six months, and the team actually knows our names.
+    name: Harsh Vardhan
+    role: Co-founder, Ledgerly Fintech
+    centre: HSR Layout
+  - quote: >-
+      The podcast room in Indiranagar is the reason we joined. We record client work there every week,
+      and we've already started talking to them about a cabin.
+    name: Aisha Siddiqui
+    role: Founder, Kalakaar Studio
+    centre: Indiranagar
+  - quote: >-
+      Sixteen people, one cabin, five minutes from Manyata. Hebbal gave us a proper office at a price
+      our CFO stopped asking about.
+    name: Neha Kapoor
+    role: COO, Swasth AI Health
+    centre: Hebbal (Manyata)
+
+home_faq:
+  - q: Can I visit before I sign up?
+    a: Yes. Tours run Monday to Saturday, 10 am to 6 pm, and take about 30 minutes. Book one online and we'll confirm a slot by email.
+  - q: Are your prices inclusive of GST?
+    a: No. Every price on this site is per month and excludes 18% GST. Longer lock-ins earn 5% (6 months) or 10% (12 months) off seat fees.
+  - q: How are private cabins billed?
+    a: On the cabin's full capacity, not on headcount. Cabins come in fixed sizes, so a team of 14 takes a 16-seat cabin.
+  - q: Do you have a plan for very early teams?
+    a: The Founders Plan gives teams of 1 to 3 dedicated desks on a 3-month lock-in at Koramangala, Indiranagar and HSR Layout. Companies incorporated less than 3 years ago, or DPIIT-recognised, are eligible.

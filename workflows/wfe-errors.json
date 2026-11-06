@@ -1,0 +1,431 @@
+{
+  "name": "LB · WF-E Errors",
+  "nodes": [
+    {
+      "id": "6f252154-4f13-4bb9-a732-5940216ae5d3",
+      "name": "On any failure",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "15badc4f-7ca6-4eb8-9e0d-1d9b65c0805f",
+      "name": "Read recent errors",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        272,
+        128
+      ],
+      "parameters": {
+        "resource": "sheet",
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "1H7tY4fWsIw1oRcwpeVHbTxD3Bt4XkBYT3rowPsEYwCk",
+          "cachedResultName": "Launchbench Data"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "errors"
+        },
+        "options": {}
+      },
+      "executeOnce": true,
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "onError": "continueRegularOutput",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "J6ToBRhna1sIl1I6",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "id": "b84a58f6-95d3-41cb-8114-ea3bf1a4e403",
+      "name": "Describe the failure",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        496,
+        128
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "// ===== WF-E \"Describe the failure\" =====\n// n8n runs this workflow when WF-0 to WF-5 fail in a production run. Turn the\n// raw error into what happened, what it means for the sender, and what to do,\n// and decide whether to email: the same workflow + node + error is emailed at\n// most once per 30 minutes (a Gemini outage sends one alert, not twenty).\nconst t = $('On any failure').first().json;\nconst ex = t.execution || {};\nconst wf = t.workflow || {};\nconst trig = t.trigger || null;               // the trigger itself failed (e.g. Gmail polling)\nconst err = ex.error || (trig && trig.error) || {};\nconst message = String(err.message || 'Unknown error').slice(0, 500);\nconst detail = String(err.description || '').slice(0, 500);\nconst node = ex.lastNodeExecuted || (err.node && err.node.name) || (trig ? 'trigger' : 'unknown');\nconst nodeType = String((err.node && err.node.type) || '');\nconst all = `${message} ${detail} ${err.httpCode || ''}`;\nconst wfName = String(wf.name || 'unknown workflow');\nconst wfShort = (wfName.match(/WF-[0-9A-Z]+/) || [wfName])[0];\nconst now = $now.setZone('Asia/Kolkata');\n\n// ---- what went wrong (first match wins) ----\nconst isGemini = /gemini|palm|generativelanguage/i.test(nodeType + ' ' + all) || /^(Draft|Classify|Gemini)/.test(node);\nconst isSheets = /googleSheets/i.test(nodeType) || /sheets/i.test(all) || /^(Read|Log|Mark|Remember)\\b/.test(node);\nconst isGmail = /gmail/i.test(nodeType) || /^(Reply|Send|Ask|Notify|Mark as read|New email)/.test(node);\nconst isDrive = /googleDrive/i.test(nodeType) || /^(Find|Download|File)/.test(node);\nconst credential = isGmail ? 'teamlaunchbench@gmail.com' : isSheets ? 'Google Sheets account' : isDrive ? 'Google Drive account' : isGemini ? 'Google Gemini(PaLM) Api account' : 'the Google credential this node uses';\nlet diagnosis, action;\nif (/429|quota|RESOURCE_EXHAUSTED|rate.?limit|too many requests/i.test(all) && isGemini) {\n  diagnosis = 'Gemini refused the call: the free quota is used up (per minute, or the 500-a-day limit).';\n  action = 'If it is the daily limit, it resets at 1:30 pm IST. Otherwise wait a minute. Then retry the run.';\n} else if (/429|quota|rate.?limit|too many requests/i.test(all)) {\n  diagnosis = `Google limited the number of requests${isSheets ? ' to the spreadsheet (about 60 writes a minute)' : ''}.`;\n  action = 'Wait a minute, then retry the run.';\n} else if (/invalid_grant|unauthori[sz]ed|\\b401\\b|token (has been )?(expired|revoked)|invalid credentials|forbidden|\\b403\\b/i.test(all)) {\n  diagnosis = `A Google sign-in has expired or been revoked: most likely \"${credential}\".`;\n  action = `In n8n open Credentials → \"${credential}\" → Reconnect, signing in as ${isGmail ? 'teamlaunchbench@gmail.com' : isGemini ? 'the AI Studio account (or paste a new API key)' : 'the Google account that credential was first connected with'}. Then retry the run.`;\n} else if (/timed? ?out|timeout|ETIMEDOUT|ECONNRESET|ECONNREFUSED|socket hang up|\\b50[0234]\\b|service unavailable|bad gateway/i.test(all)) {\n  diagnosis = 'A temporary network or service problem (timeout or a 5xx answer from Google).';\n  action = 'Retry the run. If it keeps happening, check status.cloud.google.com.';\n} else if (/TypeError|ReferenceError|SyntaxError|is not defined|Cannot read prop|is not a function/i.test(all)) {\n  diagnosis = `A bug in the \"${node}\" Code node.`;\n  action = 'Open the run, read the error on the red node, fix the code in the repo (workflows/code/) and in n8n, then retry the run.';\n} else {\n  diagnosis = 'An error the handler does not recognise.';\n  action = 'Open the run, read the error on the red node, fix the cause, then retry the run.';\n}\n\n// ---- what it means for the person who emailed ----\nconst afterApproval = /^(Reply to sender|Send to sender|Reply with the PDF|Send with the PDF|Mark sent|Mark held)$/.test(node);\nconst IMPACT = {\n  'WF-0': 'The email was not fully triaged. If it failed before \"Mark as read\", the email is still unread in the inbox, and the stuck-email check will label it Launchbench/Error.',\n  'WF-1': 'The lead may not have received the acknowledgement, and the quote may not have gone for approval.',\n  'WF-2': 'The member may not have received the ticket acknowledgement, and the centre manager may not have been told.',\n  'WF-3': 'The billing reply may not have been drafted or sent for Finance approval.',\n  'WF-4': 'The vendor invoice may not have been checked, filed in Drive or logged.',\n  'WF-5': 'The reply to the question or change may not have been sent, or sent for approval.',\n};\nconst impact = afterApproval\n  ? 'It failed after the reply was approved: the approved reply may not have reached the sender.'\n  : trig ? `The trigger itself failed, so new emails are not being picked up until it works again.`\n  : (IMPACT[wfShort] || 'The automation did not finish this run.');\n\n// ---- email it, or is this a repeat? ----\nconst key = `${wfShort}|${node}|${message.slice(0, 80)}`;\nconst since = now.minus({ minutes: 30 }).toFormat('yyyy-MM-dd HH:mm:ss');\nconst repeat = $('Read recent errors').all().some(r => r.json.alert_key === key && r.json.emailed === 'yes' && String(r.json.logged_at) >= since);\nconst url = ex.url || '';\nconst esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');\nconst rows = [['Workflow', esc(wfName)], ['Failed at', esc(node)], ['When', now.toFormat('d LLL yyyy, h:mm a') + ' IST'], ['Error', esc(message) + (detail ? `<br><span style=\"color:#666\">${esc(detail)}</span>` : '')]];\nconst html = `<div style=\"text-align:left\">`\n  + `<p style=\"padding:8px 12px;border-radius:6px;background:#FDECEA\"><b>${esc(diagnosis)}</b></p>`\n  + `<p><b>What it means:</b> ${esc(impact)}</p>`\n  + `<p><b>What to do:</b> ${esc(action)}</p>`\n  + `<table cellpadding=\"4\" style=\"border-collapse:collapse;text-align:left\">${rows.map(r => `<tr><td style=\"color:#666;vertical-align:top\">${r[0]}</td><td>${r[1]}</td></tr>`).join('')}</table>`\n  + (url ? `<p><a href=\"${esc(url)}\">Open the failed run in n8n</a> (it shows the email being handled; Retry is at the top right).</p>` : '')\n  + `<p style=\"color:#666\">Repeats of this error in the next 30 minutes are logged in the errors tab but not emailed.</p></div>`;\n\nreturn [{ json: {\n  logged_at: now.toFormat('yyyy-MM-dd HH:mm:ss'), kind: trig ? 'trigger failure' : 'failure', workflow: wfName, node,\n  error: message, diagnosis, impact, action, execution_url: url, alert_key: key, emailed: repeat ? 'no (repeat)' : 'yes',\n  send: !repeat, subject: `n8n alert: ${wfShort} failed at \"${node}\"`, html,\n} }];\n"
+      },
+      "executeOnce": true
+    },
+    {
+      "id": "1bc5e456-b21f-4c49-9801-0ea8fe24353e",
+      "name": "Alert",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        800,
+        320
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "210fe5ad-3715-4d9e-9383-3569fcbcb4b2",
+      "name": "Every 30 minutes",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        192
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 30
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "2f6a14bf-0ae8-42fd-a057-3ca91c96d258",
+      "name": "Find stuck emails",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        272,
+        320
+      ],
+      "parameters": {
+        "resource": "message",
+        "operation": "getAll",
+        "returnAll": true,
+        "simple": true,
+        "filters": {
+          "q": "in:inbox -from:me -label:launchbench-error",
+          "readStatus": "unread",
+          "receivedAfter": "={{ Date.now() - 2 * 24 * 3600 * 1000 }}",
+          "receivedBefore": "={{ Date.now() - 10 * 60 * 1000 }}"
+        }
+      },
+      "webhookId": "2a79084d-934c-4784-9936-8d720b5cb131",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "48BDBjPeX8UnzPvh",
+          "name": "teamlaunchbench@gmail.com"
+        }
+      }
+    },
+    {
+      "id": "a206eae4-864c-4b78-840f-fd758cc955ea",
+      "name": "Label Launchbench/Error",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        496,
+        320
+      ],
+      "parameters": {
+        "resource": "message",
+        "operation": "addLabels",
+        "messageId": "={{ $json.id }}",
+        "labelIds": [
+          "Label_2"
+        ]
+      },
+      "webhookId": "d73f4d52-ea2c-46c2-a55f-c5fad6a4e2d7",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "48BDBjPeX8UnzPvh",
+          "name": "teamlaunchbench@gmail.com"
+        }
+      }
+    },
+    {
+      "id": "c1398f24-def4-4bfc-9f10-936291419fc1",
+      "name": "Sum up the stuck emails",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        320
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "// ===== WF-E \"Sum up the stuck emails\" =====\n// Every email WF-0 handles is marked read, so an unread inbox email older than\n// 10 minutes was never handled: the classifier failed (an ERROR row in\n// triage_log), WF-0 failed before \"Mark as read\", or the Gmail trigger itself\n// is broken. They are now labelled Launchbench/Error; send one alert listing them.\nconst mails = $('Find stuck emails').all().map(i => i.json).filter(j => j.id);\nconst now = $now.setZone('Asia/Kolkata');\nconst esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');\nconst when = j => j.internalDate ? DateTime.fromMillis(Number(j.internalDate)).setZone('Asia/Kolkata').toFormat('d LLL, h:mm a') : '';\nconst list = mails.map(j => `<li><b>${esc(j.Subject || '(no subject)')}</b><br>from ${esc(j.From || '?')}, received ${when(j)} IST</li>`).join('');\nconst n = mails.length;\nconst diagnosis = `${n} email${n === 1 ? '' : 's'} in the inbox ${n === 1 ? 'was' : 'were'} never handled (still unread after 10 minutes).`;\nconst action = 'Check triage_log for an ERROR row (classifier failure) and n8n Executions for a failed WF-0 run. If there is no run at all, the Gmail trigger is not working: open WF-0 and check that it is published and its Gmail credential is connected. To reprocess an email, retry its failed run, or forward it to the inbox again.';\nconst html = `<div style=\"text-align:left\">`\n  + `<p style=\"padding:8px 12px;border-radius:6px;background:#FDECEA\"><b>${esc(diagnosis)}</b> They are labelled Launchbench/Error in Gmail.</p>`\n  + `<ul>${list}</ul>`\n  + `<p><b>What it means:</b> these senders have had no reply.</p>`\n  + `<p><b>What to do:</b> ${esc(action)}</p>`\n  + `<p style=\"color:#666\">Remove the label once handled; labelled emails are not reported again.</p></div>`;\nreturn [{ json: {\n  logged_at: now.toFormat('yyyy-MM-dd HH:mm:ss'), kind: 'stuck email', workflow: 'LB · WF-0 Intake & triage', node: 'New email',\n  error: mails.map(j => `${j.From || '?'}: ${j.Subject || '(no subject)'}`).join(' | ').slice(0, 500),\n  diagnosis, impact: 'The senders have had no reply.', action, execution_url: '', alert_key: 'stuck|' + mails.map(j => j.id).join(','), emailed: 'yes',\n  subject: `n8n alert: ${n} unanswered email${n === 1 ? '' : 's'} in the inbox`, html,\n} }];\n"
+      }
+    },
+    {
+      "id": "1ec6f9cc-3fa6-4d1c-be2a-08ee2fa10cf8",
+      "name": "Log to errors",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1024,
+        224
+      ],
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "1H7tY4fWsIw1oRcwpeVHbTxD3Bt4XkBYT3rowPsEYwCk",
+          "cachedResultName": "Launchbench Data"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "errors"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {}
+        },
+        "options": {
+          "cellFormat": "RAW",
+          "handlingExtraData": "ignoreIt",
+          "useAppend": true
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "onError": "continueRegularOutput",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "J6ToBRhna1sIl1I6",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "id": "a3c48c15-9b27-4c63-bd5c-2361f2d5bb7d",
+      "name": "Email it?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1024,
+        416
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $('Alert').first().json.emailed }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              },
+              "rightValue": "yes"
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "095e7484-f9d9-482c-8a81-17607f6cd4e4",
+      "name": "Email the automation owner",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        1248,
+        416
+      ],
+      "parameters": {
+        "resource": "message",
+        "operation": "send",
+        "sendTo": "teamlaunchbench+lb-ops@gmail.com",
+        "subject": "={{ $('Alert').first().json.subject }}",
+        "emailType": "html",
+        "message": "={{ $('Alert').first().json.html }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "webhookId": "9a67cd76-34d4-4d2f-a220-81430a54c7c7",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "48BDBjPeX8UnzPvh",
+          "name": "teamlaunchbench@gmail.com"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "On any failure": {
+      "main": [
+        [
+          {
+            "node": "Read recent errors",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read recent errors": {
+      "main": [
+        [
+          {
+            "node": "Describe the failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Describe the failure": {
+      "main": [
+        [
+          {
+            "node": "Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Alert": {
+      "main": [
+        [
+          {
+            "node": "Log to errors",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Email it?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Every 30 minutes": {
+      "main": [
+        [
+          {
+            "node": "Find stuck emails",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find stuck emails": {
+      "main": [
+        [
+          {
+            "node": "Label Launchbench/Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Label Launchbench/Error": {
+      "main": [
+        [
+          {
+            "node": "Sum up the stuck emails",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sum up the stuck emails": {
+      "main": [
+        [
+          {
+            "node": "Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email it?": {
+      "main": [
+        [
+          {
+            "node": "Email the automation owner",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Asia/Kolkata"
+  },
+  "nodeGroups": [
+    {
+      "id": "e18f2a45-c000-49d4-8a66-9be3e94b270f",
+      "name": "Describe the failure",
+      "nodeNames": [
+        "Read recent errors",
+        "Describe the failure"
+      ],
+      "description": "Any production failure in WF-0 to WF-5: what broke, what it means for the sender, what to do. Repeats within 30 minutes are not emailed."
+    },
+    {
+      "id": "3a4d6ff1-d91e-40e2-b6fb-73a3a4a5bf32",
+      "name": "Find stuck emails",
+      "nodeNames": [
+        "Find stuck emails",
+        "Label Launchbench/Error",
+        "Sum up the stuck emails"
+      ],
+      "description": "Unread inbox emails older than 10 minutes were never handled: label them Launchbench/Error and list them."
+    },
+    {
+      "id": "75a1623c-a246-4b2f-b9b9-a0a99bd70c25",
+      "name": "Log and alert",
+      "nodeNames": [
+        "Alert",
+        "Log to errors",
+        "Email it?",
+        "Email the automation owner"
+      ],
+      "description": "One row in the errors tab; an email to +lb-ops unless it is a repeat."
+    }
+  ],
+  "meta": {
+    "aiBuilderAssisted": true,
+    "builderVariant": "mcp"
+  },
+  "tags": [],
+  "id": "3HY83a73WFAZbAl1",
+  "active": false,
+  "pinData": {}
+}

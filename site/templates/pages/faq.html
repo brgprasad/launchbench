@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% from "_partials.html" import page_hero, qa, cta_band %}
+{% block title %}FAQ · {{ c.brand.name }} coworking in Bengaluru{% endblock %}
+{% block description %}Answers about Launchbench plans, prices, lock-ins, deposits, meeting rooms, parking, pets, billing and cancellations.{% endblock %}
+{% block main %}
+{% set cab16 = centres|sort(attribute='price_cab') %}
+
+{{ page_hero('FAQ', 'Questions, <span class="text-brand-500">answered.</span>', 'Everything people usually ask us before, during and after a tour. All prices exclude 18% GST.') }}
+
+<div class="wrap grid gap-12 lg:grid-cols-12">
+  <nav class="lg:col-span-3" aria-label="FAQ sections">
+    <ul class="sticky top-28 flex flex-wrap gap-2 lg:flex-col lg:gap-1">
+      {% for id, label in [('plans', 'Plans and pricing'), ('rooms', 'Meeting rooms and events'), ('access', 'Access, guests and amenities'), ('billing', 'Billing'), ('changes', 'Changes and exits')] %}
+      <li><a href="#{{ id }}" class="inline-flex rounded-full bg-white px-4 py-2 text-sm font-medium text-ink-600 shadow-soft ring-1 ring-ink/5 hover:text-ink lg:flex lg:rounded-xl lg:bg-transparent lg:px-3 lg:shadow-none lg:ring-0 lg:hover:bg-white">{{ label }}</a></li>
+      {% endfor %}
+    </ul>
+  </nav>
+
+  <div class="space-y-16 lg:col-span-9">
+    <section id="plans" class="scroll-mt-28">
+      <h2 class="section-title text-2xl">Plans and pricing</h2>
+      <div class="mt-6 space-y-3">
+        {% call qa('What is the cheapest way to work from Launchbench?', open=true) %}
+          <p>A day pass is {{ prices['DAY-ALL']|inr }}. For regular use, hot desks start at {{ centre_by_code['HEB'].price_hot|inr }} a month at Hebbal and {{ centre_by_code['WHF'].price_hot|inr }} at Whitefield.</p>
+        {% endcall %}
+        {% call qa("What's the difference between a hot desk, a dedicated desk and a cabin?") %}
+          <p><strong>Hot desk:</strong> any free seat in the open area, 8 am to 9 pm, Monday to Saturday. <strong>Dedicated desk:</strong> your own fixed desk with a pedestal, 24×7. <strong>Private cabin:</strong> a lockable room for your team only, 24×7, billed on its full capacity.</p>
+        {% endcall %}
+        {% call qa('We are a team of 14. How much is a cabin?') %}
+          <p>Cabins come in fixed sizes, so a team of 14 takes a 16-seat cabin. On a 12-month lock-in, that costs per month:</p>
+          <ul class="grid gap-2 sm:grid-cols-2">
+            {% for ctr in cab16 %}<li class="flex justify-between rounded-xl bg-cream-100 px-4 py-2"><span>{{ ctr.name.split(' (')[0] }}</span><strong>{{ (16 * ctr.price_cab * 0.9)|inr }}</strong></li>{% endfor %}
+          </ul>
+          <p>See <a class="font-semibold text-brand-600 hover:underline" href="/locations/">each centre's page</a> for cabins opening soon.</p>
+        {% endcall %}
+        {% call qa('Do you offer discounts?') %}
+          <p>Yes. {{ prices['DISC-LOCKIN-6'] }}% off seat fees for a 6-month lock-in, and {{ prices['DISC-LOCKIN-12'] }}% for 12 months. Startups referred by our partners ({{ c.partners|join(', ') }}) get {{ prices['DISC-PARTNER'] }}% off for their first 6 months. The partner discount doesn't stack with a lock-in discount; the higher one applies.</p>
+        {% endcall %}
+        {% call qa('What is the Founders Plan?') %}
+          <p>1 to 3 dedicated desks at {{ from_fnd|inr }} per seat per month, with a 3-month lock-in and 10 meeting-room credits a month for the team. It's for companies incorporated less than 3 years ago, or DPIIT-recognised startups, at Koramangala, Indiranagar and HSR Layout. <a class="font-semibold text-brand-600 hover:underline" href="/startups/">More about the Founders Plan</a></p>
+        {% endcall %}
+        {% call qa('Can I try before I commit?') %}
+          <p>Teams of 5 or more seats get a free 1-day trial. Anyone can buy a {{ prices['DAY-ALL']|inr }} day pass. And tours run Monday to Saturday, 10 am to 6 pm.</p>
+        {% endcall %}
+        {% call qa('Is there a security deposit?') %}
+          <p>Yes, and it's refundable and interest-free: 1 month of seat fees for hot desks and the Founders Plan, 2 months for dedicated desks and cabins. No GST is charged on deposits.</p>
+        {% endcall %}
+        {% call qa('Is there a minimum commitment?') %}
+          <p>Hot desks are month-to-month. Dedicated desks and the Founders Plan have a 3-month minimum, and private cabins 6 months. After the lock-in, your membership simply continues month-to-month.</p>
+        {% endcall %}
+        {% call qa('Do prices go up?') %}
+          <p>For memberships that continue beyond 12 months, seat fees rise by 6% on each contract anniversary.</p>
+        {% endcall %}
+      </div>
+    </section>
+
+    <section id="rooms" class="scroll-mt-28">
+      <h2 class="section-title text-2xl">Meeting rooms and events</h2>
+      <div class="mt-6 space-y-3">
+        {% call qa('How many meeting-room hours do I get?') %}
+          <p>Hot desks get 2 credits per seat each month, dedicated desks and cabins 4 per seat, and the Founders Plan 10 for the team. 1 credit is 1 hour in a 4- or 8-seater; the boardroom uses 2 credits an hour. Credits don't roll over.</p>
+        {% endcall %}
+        {% call qa('What if I use more than my credits?') %}
+          <p>Extra hours go on your next invoice at the member rate: {{ (prices['MR-4'] * 0.8)|inr }}/hr for a 4-seater, {{ (prices['MR-8'] * 0.8)|inr }}/hr for an 8-seater and {{ (prices['MR-12'] * 0.8)|inr }}/hr for the boardroom.</p>
+        {% endcall %}
+        {% call qa('Can non-members book meeting rooms?') %}
+          <p>Yes, at list rates: {{ prices['MR-4']|inr }}/hr for a 4-seater, {{ prices['MR-8']|inr }}/hr for an 8-seater and {{ prices['MR-12']|inr }}/hr for the boardroom.</p>
+        {% endcall %}
+        {% call qa('Can we host a launch or demo day?') %}
+          <p>Yes. Our Koramangala hall seats 80 ({{ prices['EVT-KOR-HALF']|inr }} half day, {{ prices['EVT-KOR-FULL']|inr }} full day) and Whitefield seats 120 ({{ prices['EVT-WHF-HALF']|inr }} / {{ prices['EVT-WHF-FULL']|inr }}). Members get 20% off. A 50% advance confirms the booking, and catering is quoted separately. <a class="font-semibold text-brand-600 hover:underline" href="/events/#halls">About the event halls</a></p>
+        {% endcall %}
+      </div>
+    </section>
+
+    <section id="access" class="scroll-mt-28">
+      <h2 class="section-title text-2xl">Access, guests and amenities</h2>
+      <div class="mt-6 space-y-3">
+        {% call qa('Can hot desk members get 24×7 access?') %}
+          <p>Yes, for {{ prices['ACCESS247-HOT']|inr }} a month extra. Dedicated desk, cabin and Founders Plan members get 24×7 access at no extra cost.</p>
+        {% endcall %}
+        {% call qa('Can I bring guests?') %}
+          <p>Meeting guests are free. A guest who'll work at a desk needs a {{ prices['GUEST-ALL']|inr }} guest day pass, billed to you. Up to 4 visitors per member at a time in common areas.</p>
+        {% endcall %}
+        {% call qa('Can I bring my dog?') %}
+          <p>Only at <a class="font-semibold text-brand-600 hover:underline" href="/locations/hsr-layout/">HSR Layout</a>, in the ground-floor Paws Zone, Monday to Friday. Dogs must be vaccinated and leashed, and the owner signs a waiver. Pets aren't allowed at our other centres, except assistance animals.</p>
+        {% endcall %}
+        {% call qa('Is there parking?') %}
+          <p>Yes, at every centre. Car parking is {{ prices['PARK-CAR-KOR']|inr }} a month at Koramangala and Indiranagar (Indiranagar has a waitlist), and {{ prices['PARK-CAR-HSR']|inr }} at HSR Layout, Whitefield and Hebbal. Two-wheeler parking is {{ prices['PARK-BIKE-ALL']|inr }} a month everywhere.</p>
+        {% endcall %}
+        {% call qa('Which centres are near a metro station?') %}
+          <p>Indiranagar is about 600 m from Indiranagar station, and Whitefield about 800 m from Kadugodi Tree Park. Hebbal runs a free shuttle from the Hebbal flyover bus stop at peak hours on weekdays.</p>
+        {% endcall %}
+        {% call qa('Do you accept couriers on our behalf?') %}
+          <p>Reception accepts couriers 9 am to 7 pm, Monday to Saturday, and holds them for 7 days. Let reception know a day ahead for anything over 20 kg. We can't accept cash-on-delivery parcels.</p>
+        {% endcall %}
+        {% call qa('Can we get a static IP or a private network?') %}
+          <p>A private VLAN for cabins is free. A static public IP is {{ prices['STATICIP-ALL']|inr }} a month.</p>
+        {% endcall %}
+        {% call qa('Is there food?') %}
+          <p>Unlimited tea and coffee at every centre, and the Burn Rate Café at Koramangala serves meals from 8 am to 8 pm.</p>
+        {% endcall %}
+      </div>
+    </section>
+
+    <section id="billing" class="scroll-mt-28">
+      <h2 class="section-title text-2xl">Billing</h2>
+      <div class="mt-6 space-y-3">
+        {% call qa('When are invoices raised and when are they due?') %}
+          <p>Invoices go out on the 1st and are due by the 7th. Seat fees are billed in advance; usage such as meeting-room overage is billed in arrears.</p>
+        {% endcall %}
+        {% call qa('Can we deduct TDS?') %}
+          <p>Yes, under Section 194-I at 10%, on the amount before GST. Please share Form 16A every quarter.</p>
+        {% endcall %}
+        {% call qa('How do we pay?') %}
+          <p>By NEFT, RTGS, IMPS or UPI to the account printed on the invoice. We don't accept cheques. <strong>Our bank details never change by email.</strong> If you ever receive an email saying they have, call your account manager before paying.</p>
+        {% endcall %}
+        {% call qa('What happens if we pay late?') %}
+          <p>A late fee of 1.5% a month applies. At 30 days we send a suspension warning, and at 45 days access is suspended.</p>
+        {% endcall %}
+      </div>
+    </section>
+
+    <section id="changes" class="scroll-mt-28">
+      <h2 class="section-title text-2xl">Changes and exits</h2>
+      <div class="mt-6 space-y-3">
+        {% call qa('Can we upgrade or add seats?') %}
+          <p>Yes, at any time and subject to availability, with no fee. A new minimum lock-in starts from the upgrade date.</p>
+        {% endcall %}
+        {% call qa('Can we downsize?') %}
+          <p>After your lock-in, yes, with normal notice. During the lock-in, desk members can make one reduction of up to 20% of seats with 2 months' notice. Cabin teams move to a smaller cabin, and pay the fee difference for the rest of the lock-in.</p>
+        {% endcall %}
+        {% call qa('How do we cancel?') %}
+          <p>Send us notice in writing by email, with your account manager in copy. Desks need 1 month's notice and cabins 2 months. Leaving before the end of a lock-in means paying the seat fees for the remaining months.</p>
+        {% endcall %}
+        {% call qa('When do we get our deposit back?') %}
+          <p>Within 30 days of your exit date, less any dues, damage or unreturned access cards ({{ prices['CARD-REPLACE']|inr }} each).</p>
+        {% endcall %}
+      </div>
+    </section>
+  </div>
+</div>
+
+{{ cta_band("Still have a question?", "Ask us on a tour, or put it in your email when you book one.") }}
+{% endblock %}

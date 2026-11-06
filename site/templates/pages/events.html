@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon, img %}
+{% from "_partials.html" import page_hero, section_head, cta_band %}
+{% block title %}Meeting rooms, event halls and Demo Night · {{ c.brand.name }}{% endblock %}
+{% block description %}Book meeting rooms from {{ prices['MR-4']|inr }} an hour and event halls for up to 120 people in Bengaluru. Plus Demo Night and mentor office hours for members.{% endblock %}
+{% block main %}
+{% set member = (100 - prices['DISC-MEMBER-ROOMS']) / 100 %}
+
+{{ page_hero('Meeting rooms & events',
+  'Rooms for the pitch, <span class="text-brand-500">the party</span> and everything between.',
+  'Meeting rooms at every centre, event halls in Koramangala and Whitefield, and a community calendar that gives you a reason to stay after six.',
+  image='event-hall', alt='The event hall set up for a talk',
+  primary=('Enquire about an event', '/book-a-tour/?interest=event'), secondary=('Room prices', '#rooms')) }}
+
+{# ---------- Meeting rooms ---------- #}
+<section id="rooms" class="wrap scroll-mt-28 pt-8">
+  {{ section_head('Meeting rooms, named for the journey', 'Every Launchbench room is named after a funding stage. Members pay with the credits included in their plan, then at 20% off the list rate. Non-members can book at list rates.') }}
+  <div class="mt-12 grid gap-6 lg:grid-cols-3">
+    {% for names, size, sku, credits, text in [
+      (['Pre-Seed', 'Seed'], '4 seats', 'MR-4', '1 credit per hour', 'For one-on-ones, interviews and the call you can\'t take at your desk.'),
+      (['Series A', 'Series B'], '8 seats', 'MR-8', '1 credit per hour', 'Screen, whiteboard and room for the whole squad\'s sprint planning.'),
+      (['IPO'], '12-seat boardroom', 'MR-12', '2 credits per hour', 'For board meetings, investor updates and the client you really want to win.'),
+    ] %}
+    <div class="card flex flex-col p-8 {{ 'bg-ink text-white ring-0' if loop.last else '' }}">
+      <div class="flex flex-wrap gap-2">
+        {% for n in names %}<span class="rounded-full px-3 py-1 font-display text-sm font-bold {{ 'bg-brand-500 text-white' if names == ['IPO'] else 'bg-brand-50 text-brand-700' }}">{{ n }}</span>{% endfor %}
+      </div>
+      <h3 class="mt-6 text-2xl font-bold">{{ size }}</h3>
+      <p class="mt-2 flex-1 text-sm leading-relaxed {{ 'text-white/70' if loop.last else 'text-ink-500' }}">{{ text }}</p>
+      <dl class="mt-8 grid grid-cols-2 gap-4 border-t {{ 'border-white/10' if loop.last else 'border-ink/5' }} pt-5 text-sm">
+        <div><dt class="{{ 'text-white/50' if loop.last else 'text-ink-400' }}">List rate</dt><dd class="mt-0.5 font-display text-xl font-bold">{{ prices[sku]|inr }}<span class="text-xs font-medium opacity-60">/hr</span></dd></div>
+        <div><dt class="{{ 'text-white/50' if loop.last else 'text-ink-400' }}">Members</dt><dd class="mt-0.5 font-display text-xl font-bold">{{ (prices[sku] * member)|inr }}<span class="text-xs font-medium opacity-60">/hr</span></dd></div>
+      </dl>
+      <p class="mt-4 text-xs {{ 'text-white/50' if loop.last else 'text-ink-400' }}">Or {{ credits }} from your plan</p>
+    </div>
+    {% endfor %}
+  </div>
+
+  <div class="mt-8 grid gap-6 lg:grid-cols-12">
+    <div class="card p-8 lg:col-span-7">
+      <h3 class="font-display text-lg font-bold">Credits included every month</h3>
+      <div class="mt-5 grid grid-cols-2 gap-4 sm:grid-cols-4">
+        {% for plan, n in [('Hot desk', '2 per seat'), ('Dedicated desk', '4 per seat'), ('Private cabin', '4 per seat'), ('Founders Plan', '10 per team')] %}
+        <div class="rounded-2xl bg-cream-100 p-4"><p class="text-xs text-ink-400">{{ plan }}</p><p class="mt-1 font-semibold">{{ n }}</p></div>
+        {% endfor %}
+      </div>
+      <p class="mt-5 text-sm text-ink-500">1 credit is 1 hour in a 4- or 8-seater; the boardroom takes 2 credits an hour. Credits reset each month and don't roll over. Extra hours appear on your next invoice at the member rate.</p>
+    </div>
+    <div class="flex gap-5 rounded-[1.5rem] bg-brand-50 p-8 ring-1 ring-brand-100 lg:col-span-5">
+      <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white text-brand-600 shadow-soft">{{ icon('mic', 'h-6 w-6') }}</span>
+      <div>
+        <h3 class="font-display text-lg font-bold">Podcast and recording room</h3>
+        <p class="mt-2 text-sm leading-relaxed text-ink-600">Indiranagar has a treated recording room for podcasts, voice-overs and product videos. It's free for members and booked just like a 4-seater.</p>
+        <a href="/locations/indiranagar/" class="link-arrow mt-4">Visit Indiranagar {{ icon('arrow', 'h-4 w-4') }}</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+{# ---------- Event halls ---------- #}
+<section id="halls" class="wrap scroll-mt-28 pt-28">
+  {{ section_head('Event halls for launches, meetups and offsites', 'Two halls with AV, a projector, 2 wireless microphones and basic seating layouts included. Catering comes from the Burn Rate Café or an approved caterer, quoted separately.') }}
+  <div class="mt-12 grid gap-6 lg:grid-cols-2">
+    {% for ctr in centres if ctr.has_event_hall %}
+    <div class="card overflow-hidden">
+      <div class="p-8">
+        <div class="flex items-start justify-between gap-4">
+          <div>
+            <p class="text-sm font-semibold uppercase tracking-wider text-brand-600">Event hall</p>
+            <h3 class="mt-1 text-2xl font-bold">{{ ctr.name }}</h3>
+            <p class="mt-1 text-sm text-ink-500">{{ 'Home of Demo Night, with the Burn Rate Café downstairs for catering.' if ctr.code == 'KOR' else 'Our biggest room, a short walk from Kadugodi Tree Park Metro.' }}</p>
+          </div>
+          <div class="shrink-0 text-right">
+            <p class="font-display text-5xl font-extrabold leading-none text-ink">{{ ctr.hall_size }}</p>
+            <p class="mt-1 text-xs text-ink-400">people, theatre-style</p>
+          </div>
+        </div>
+        <dl class="mt-6 grid grid-cols-2 gap-4">
+          {% for label, sku, hrs in [('Half day', 'EVT-' ~ ctr.code ~ '-HALF', 'up to 5 hours'), ('Full day', 'EVT-' ~ ctr.code ~ '-FULL', 'up to 10 hours')] %}
+          <div class="rounded-2xl bg-cream-100 p-5">
+            <dt class="text-sm text-ink-500">{{ label }} <span class="text-ink-400">· {{ hrs }}</span></dt>
+            <dd class="mt-1 font-display text-2xl font-extrabold">{{ prices[sku]|inr }}</dd>
+            <dd class="text-xs text-ink-400">Members {{ (prices[sku] * member)|inr }}</dd>
+          </div>
+          {% endfor %}
+        </dl>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  <div class="mt-8 grid gap-4 text-sm sm:grid-cols-3">
+    {% for ic, t in [('calendar', 'A 50% advance confirms your booking. Cancel more than 7 days ahead for a full refund.'), ('users', 'Events with more than 20 external guests need 7 days\' notice and a guest list.'), ('coffee', 'Catering by the Burn Rate Café or an approved caterer, quoted separately.')] %}
+    <div class="flex gap-3 rounded-2xl bg-white/70 p-5 ring-1 ring-ink/5"><span class="text-brand-600">{{ icon(ic) }}</span><p class="text-ink-600">{{ t }}</p></div>
+    {% endfor %}
+  </div>
+</section>
+
+{# ---------- Community calendar ---------- #}
+<section id="community" class="wrap scroll-mt-28 pt-28">
+  <div class="grid gap-12 lg:grid-cols-12 lg:items-start">
+    <div class="lg:col-span-5">
+      <h2 class="section-title">Something on every month</h2>
+      <p class="section-lede text-base">Community events are free for members. They're where co-founders meet, first hires get made and somebody always knows a good CA.</p>
+      {{ img('community-demo-night', 'A founder pitching at Demo Night', 'mt-8 aspect-[4/3] w-full rounded-[2rem] object-cover shadow-lift', '(min-width: 1024px) 480px, 100vw') }}
+    </div>
+    <div class="space-y-6 lg:col-span-7">
+      {% for title, ic, where, text, dates in [
+        ('Demo Night', 'rocket', 'Koramangala event hall · last Friday of the month', 'One member startup pitches to the whole community, then everyone stays for the questions, the feedback and the food.', demo_nights),
+        ('Mentor office hours', 'users', 'Koramangala and Whitefield · every 2nd Wednesday', 'Drop-in sessions with mentors from our partner funds. Bring your deck, your metrics or your hiring plan.', office_hours),
+      ] %}
+      <div class="card p-8">
+        <div class="flex items-start gap-4">
+          <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-brand-50 text-brand-600 ring-1 ring-brand-100">{{ icon(ic, 'h-6 w-6') }}</span>
+          <div>
+            <h3 class="text-xl font-bold">{{ title }}</h3>
+            <p class="text-sm text-ink-400">{{ where }}</p>
+          </div>
+        </div>
+        <p class="mt-4 leading-relaxed text-ink-500">{{ text }}</p>
+        <p class="mt-6 text-xs font-semibold uppercase tracking-wider text-ink-400">Coming up</p>
+        <ul class="mt-3 grid gap-3 sm:grid-cols-3">
+          {% for d in dates %}
+          <li class="flex items-center gap-3 rounded-2xl bg-cream-100 p-3">
+            <span class="flex h-12 w-12 flex-col items-center justify-center rounded-xl bg-white leading-none shadow-soft"><span class="text-[10px] font-semibold uppercase text-brand-600">{{ d.mon }}</span><span class="font-display text-lg font-extrabold">{{ d.day }}</span></span>
+            <span class="text-sm font-medium text-ink-600">{{ d.dow }}</span>
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+{{ cta_band('Planning an event?', 'Tell us the date, the headcount and what you have in mind. We\'ll check the hall and come back with a quote.', href='/book-a-tour/?interest=event', label='Enquire now') }}
+{% endblock %}

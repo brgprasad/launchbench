@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon, img %}
+{% from "_partials.html" import fact, cta_band %}
+{% set ctr = centre %}
+{% set short = ctr.name.split(' (')[0] %}
+{% block title %}Coworking in {{ short }}, Bengaluru · {{ c.brand.name }} {{ short }}{% endblock %}
+{% block description %}{{ ctr.blurb }} Hot desks from {{ ctr.price_hot|inr }}, private cabins from {{ ctr.price_cab|inr }} per seat. {{ ctr.address }}.{% endblock %}
+{% block main %}
+{% set gallery = {
+  'KOR': ['event-hall', 'lounge'], 'IND': ['community-workshop', 'space-dedicated'], 'HSR': ['space-hot', 'space-founders'],
+  'WHF': ['space-cabin', 'event-hall'], 'HEB': ['space-dedicated', 'space-cabin'] }[ctr.code] %}
+
+<section class="wrap pt-8 lg:pt-12">
+  <nav aria-label="Breadcrumb" class="text-sm text-ink-400">
+    <a href="/locations/" class="hover:text-ink">Locations</a> <span class="mx-1.5">/</span> <span class="text-ink-600">{{ ctr.name }}</span>
+  </nav>
+  <div class="mt-6 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+    <div class="max-w-3xl">
+      <span class="eyebrow capitalize">{{ ctr.tag or 'Launchbench centre' }}</span>
+      <h1 class="mt-4 text-[2.4rem] font-extrabold leading-[1.08] sm:text-5xl lg:text-[3.4rem]">Launchbench <span class="text-brand-500">{{ ctr.name }}</span></h1>
+      <p class="mt-4 flex gap-2 text-ink-600">{{ icon('pin', 'mt-0.5 h-5 w-5 shrink-0 text-brand-500') }} {{ ctr.address }}</p>
+    </div>
+    <div class="flex flex-wrap gap-3">
+      <a href="/book-a-tour/?centre={{ ctr.code }}" class="btn-primary px-6 py-3.5 text-base">Book a tour here {{ icon('arrow', 'h-4 w-4') }}</a>
+      <a href="#map" class="btn-ghost px-6 py-3.5 text-base">Getting here</a>
+    </div>
+  </div>
+
+  <div class="mt-10 grid gap-4 sm:grid-cols-3 sm:grid-rows-2">
+    <div class="overflow-hidden rounded-[2rem] sm:col-span-2 sm:row-span-2">
+      {{ img(ctr.image, 'Inside Launchbench ' ~ ctr.name, 'aspect-[4/3] h-full w-full object-cover sm:aspect-auto', '(min-width: 640px) 66vw, 100vw', eager=true) }}
+    </div>
+    {% for g in gallery %}
+    <div class="hidden overflow-hidden rounded-[2rem] sm:block">
+      {{ img(g, 'Launchbench ' ~ ctr.name, 'aspect-[4/3] h-full w-full object-cover', '33vw') }}
+    </div>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="wrap pt-16">
+  <div class="grid gap-12 lg:grid-cols-12">
+    {# ---------- Main column ---------- #}
+    <div class="lg:col-span-8">
+      <p class="text-xl leading-relaxed text-ink-700">{{ ctr.blurb }}</p>
+
+      <h2 class="section-title mt-14 text-2xl sm:text-3xl">At a glance</h2>
+      <dl class="mt-8 grid gap-8 sm:grid-cols-2">
+        {{ fact('Capacity', ctr.capacity, 'users') }}
+        {{ fact('Private cabins', ctr.cabins_html, 'building') }}
+        {{ fact('Meeting rooms', ctr.meeting_rooms, 'calendar') }}
+        {{ fact('Event hall', ctr.event_hall|cap, 'mic') }}
+        {{ fact('Parking', ctr.parking|cap, 'car') }}
+        {{ fact('Highlights', ctr.highlights|cap, 'sparkle') }}
+      </dl>
+
+      {% if ctr.pet_friendly %}
+      <div class="mt-12 flex gap-5 rounded-[2rem] bg-leaf-100 p-6 sm:p-8">
+        <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white text-leaf-600">{{ icon('paw', 'h-6 w-6') }}</span>
+        <div>
+          <h3 class="font-display text-lg font-bold">The Paws Zone</h3>
+          <p class="mt-2 text-sm leading-relaxed text-ink-600">Bring your dog to the ground-floor open desks and courtyard, Monday to Friday. Dogs need up-to-date vaccinations and a leash in shared areas, owners sign a pet waiver, and up to 6 dogs can be on site at a time (book a slot in the app). Members of other centres can use the Paws Zone with a guest day pass.</p>
+        </div>
+      </div>
+      {% endif %}
+
+      <h2 class="section-title mt-14 text-2xl sm:text-3xl">What's available</h2>
+      <p class="mt-3 text-ink-500">Updated as spaces open up. Ask on your tour about anything not listed here.</p>
+      <div class="card mt-8 divide-y divide-ink/5">
+        {% for o in ctr.openings %}
+        <div class="flex flex-wrap items-center justify-between gap-4 px-5 py-4 sm:px-6">
+          <div class="flex items-center gap-4">
+            <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-cream-100 text-ink-600">{{ icon('building' if o.type == 'Private cabin' else 'users', 'h-4 w-4') }}</span>
+            <div>
+              {% if o.type == 'Private cabin' %}
+              <p class="font-semibold">{{ o.size }}-seat cabin{{ 's' if o.units > 1 else '' }}</p>
+              <p class="text-sm text-ink-400">{{ o.ref }} · {{ (o.size|int * ctr.price_cab)|inr }} a month + GST</p>
+              {% else %}
+              <p class="font-semibold">{{ o.type }}s</p>
+              <p class="text-sm text-ink-400">{{ o.units }} available · {{ (ctr.price_hot if o.type == 'Hot desk' else ctr.price_ded)|inr }} per seat a month + GST</p>
+              {% endif %}
+            </div>
+          </div>
+          {% if o.now %}
+          <span class="rounded-full bg-leaf-100 px-3 py-1 text-xs font-semibold text-leaf-600">Available now</span>
+          {% else %}
+          <span class="rounded-full bg-brand-50 px-3 py-1 text-xs font-semibold text-brand-700">From {{ o.from_nice }}</span>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+      <p class="mt-3 text-sm text-ink-400">Cabin prices shown before lock-in discounts: 5% off for 6 months, 10% off for 12 months.</p>
+
+      <h2 id="map" class="section-title mt-14 scroll-mt-28 text-2xl sm:text-3xl">Getting here</h2>
+      <div class="mt-8 overflow-hidden rounded-[2rem] ring-1 ring-ink/5">
+        <iframe title="Map of Launchbench {{ ctr.name }}" class="h-80 w-full grayscale-[30%]" loading="lazy"
+          src="https://www.openstreetmap.org/export/embed.html?bbox={{ (ctr.lon - 0.012)|round(4) }}%2C{{ (ctr.lat - 0.008)|round(4) }}%2C{{ (ctr.lon + 0.012)|round(4) }}%2C{{ (ctr.lat + 0.008)|round(4) }}&amp;layer=mapnik&amp;marker={{ ctr.lat }}%2C{{ ctr.lon }}"></iframe>
+      </div>
+      <dl class="mt-8 grid gap-8 sm:grid-cols-2">
+        {{ fact('Metro and transport', ctr.metro|cap, 'train') }}
+        {{ fact('Opening hours', 'Hot desks and day passes 8 am–9 pm, Monday to Saturday. Dedicated desks and cabins 24×7. Reception 9 am–7 pm, Monday to Saturday.', 'clock') }}
+      </dl>
+    </div>
+
+    {# ---------- Sticky price card ---------- #}
+    <aside class="lg:col-span-4">
+      <div class="card sticky top-28 p-6 sm:p-8">
+        <h2 class="font-display text-lg font-bold">Prices at {{ short }}</h2>
+        <p class="text-sm text-ink-400">Per seat per month, excluding GST</p>
+        <dl class="mt-6 divide-y divide-ink/5">
+          {% for label, v, href in [('Hot desk', ctr.price_hot, '/workspaces/#hot-desk'), ('Dedicated desk', ctr.price_ded, '/workspaces/#dedicated-desk'), ('Private cabin', ctr.price_cab, '/workspaces/#private-cabin'), ('Founders Plan', ctr.price_fnd, '/startups/')] if v %}
+          <div class="flex items-center justify-between py-3">
+            <dt><a href="{{ href }}" class="text-ink-600 hover:text-brand-600">{{ label }}</a></dt>
+            <dd class="font-display text-lg font-bold">{{ v|inr }}</dd>
+          </div>
+          {% endfor %}
+          <div class="flex items-center justify-between py-3">
+            <dt class="text-ink-600">Day pass</dt>
+            <dd class="font-display text-lg font-bold">{{ prices['DAY-ALL']|inr }}<span class="text-xs font-medium text-ink-400"> / day</span></dd>
+          </div>
+        </dl>
+        <a href="/book-a-tour/?centre={{ ctr.code }}" class="btn-primary mt-6 w-full py-3.5">Book a tour {{ icon('arrow', 'h-4 w-4') }}</a>
+        <a href="/pricing/?centre={{ ctr.code }}" class="btn-ghost mt-3 w-full">Full price list</a>
+        <div class="mt-6 flex items-center gap-3 border-t border-ink/5 pt-6">
+          <span class="flex h-10 w-10 items-center justify-center rounded-full bg-brand-100 font-display text-sm font-bold text-brand-700">{{ ctr.manager.split(' ')[0][0] }}{{ ctr.manager.split(' ')[-1][0] }}</span>
+          <p class="text-sm"><span class="block font-semibold">{{ ctr.manager }}</span><span class="text-ink-400">Centre manager</span></p>
+        </div>
+      </div>
+    </aside>
+  </div>
+</section>
+
+{# ---------- Other centres ---------- #}
+<section class="wrap pt-24">
+  <h2 class="section-title text-2xl sm:text-3xl">Our other centres</h2>
+  <div class="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+    {% for o in centres if o.code != ctr.code %}
+    <a href="/locations/{{ o.slug }}/" class="card group overflow-hidden transition hover:-translate-y-1 hover:shadow-lift">
+      {{ img(o.image, 'Launchbench ' ~ o.name, 'aspect-[16/10] w-full object-cover', '(min-width: 1024px) 280px, 50vw') }}
+      <div class="p-5">
+        <p class="font-display font-bold group-hover:text-brand-600">{{ o.name }}</p>
+        <p class="mt-1 text-sm text-ink-400">Hot desk from {{ o.price_hot|inr }}</p>
+      </div>
+    </a>
+    {% endfor %}
+  </div>
+</section>
+
+{{ cta_band('Come and see ' ~ short ~ '.', 'Tours take about 30 minutes, Monday to Saturday between 10 am and 6 pm. ' ~ ctr.manager.split(' ')[0] ~ ' and the community team will show you around.', href='/book-a-tour/?centre=' ~ ctr.code, label='Book a tour') }}
+{% endblock %}

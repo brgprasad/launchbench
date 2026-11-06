@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon, img %}
+{% from "_partials.html" import section_head, cta_band %}
+{% block title %}Locations: 5 coworking centres in Bengaluru · {{ c.brand.name }}{% endblock %}
+{% block description %}Launchbench coworking centres in Koramangala, Indiranagar, HSR Layout, Whitefield and Hebbal (Manyata). Addresses, metro access, parking and prices.{% endblock %}
+{% block main %}
+
+<section class="relative overflow-hidden">
+  <div class="pointer-events-none absolute -right-40 -top-48 h-[32rem] w-[32rem] rounded-full bg-brand-100/60 blur-3xl"></div>
+  <div class="wrap relative grid items-center gap-12 pb-16 pt-10 lg:grid-cols-12 lg:pt-16">
+    <div class="lg:col-span-5">
+      <span class="eyebrow">Locations</span>
+      <h1 class="mt-5 text-[2.4rem] font-extrabold leading-[1.08] sm:text-5xl lg:text-[3.4rem]">Five centres, <span class="text-brand-500">one city.</span></h1>
+      <p class="mt-6 text-lg leading-relaxed text-ink-500">{{ '{:,}'.format(total_seats) }} seats across Bengaluru, from the startup lanes of Koramangala to the tech parks of Whitefield and Manyata. Pick the one closest to your team, or the one closest to your customers.</p>
+      <dl class="mt-8 grid grid-cols-2 gap-4 text-sm">
+        <div class="card p-4"><dt class="text-ink-400">Hot desks and day passes</dt><dd class="mt-1 font-semibold">8 am–9 pm, Mon–Sat</dd></div>
+        <div class="card p-4"><dt class="text-ink-400">Desks and cabins</dt><dd class="mt-1 font-semibold">24×7 card access</dd></div>
+        <div class="card p-4"><dt class="text-ink-400">Reception</dt><dd class="mt-1 font-semibold">9 am–7 pm, Mon–Sat</dd></div>
+        <div class="card p-4"><dt class="text-ink-400">Tours</dt><dd class="mt-1 font-semibold">10 am–6 pm, Mon–Sat</dd></div>
+      </dl>
+    </div>
+
+    {# Stylised map: positions come from each centre's lat/lon in content.yaml. #}
+    {% set lon0, lon1, lat0, lat1 = 77.50, 77.80, 12.86, 13.10 %}
+    <div class="lg:col-span-7">
+      <div class="relative aspect-[5/4] overflow-hidden rounded-[2rem] bg-[#EEF0EA] shadow-lift ring-1 ring-ink/5">
+        <svg class="absolute inset-0 h-full w-full" viewBox="0 0 100 80" preserveAspectRatio="none" aria-hidden="true">
+          <defs><pattern id="g" width="5" height="5" patternUnits="userSpaceOnUse"><path d="M5 0H0V5" fill="none" stroke="#0E1A2B" stroke-opacity=".05" stroke-width=".2"/></pattern></defs>
+          <rect width="100" height="80" fill="url(#g)"/>
+          <path d="M0 70 Q 22 76 46 72 T 100 66" fill="none" stroke="#C9D8C2" stroke-width="2.4" stroke-linecap="round"/>
+          <path d="M33 41 L 36 0 M33 41 L 100 35 M33 41 L 29 80 M33 41 L 0 44 M33 41 L 0 12 M33 41 L 70 80" stroke="#fff" stroke-width="1.3"/>
+          <ellipse cx="34" cy="41" rx="29" ry="22" fill="none" stroke="#fff" stroke-width="2.2"/>
+          <ellipse cx="34" cy="41" rx="29" ry="22" fill="none" stroke="#F26B1D" stroke-opacity=".25" stroke-width=".5" stroke-dasharray="1.5 1.5"/>
+          <circle cx="32" cy="41.5" r="7" fill="#C9D8C2" fill-opacity=".5"/>
+        </svg>
+        <span class="absolute left-[23%] top-[56%] hidden sm:block text-[10px] font-semibold uppercase tracking-[0.2em] text-ink-400 sm:text-xs">City centre</span>
+        <span class="absolute left-[32%] top-3 inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-[0.15em] text-ink-400 sm:text-xs">↑ Airport</span>
+        <span class="absolute left-[8%] top-[22%] -rotate-[28deg] text-[10px] font-semibold uppercase tracking-[0.2em] text-ink-300 sm:text-xs">Outer Ring Road</span>
+        {% for ctr in centres %}
+        {% set x = ((ctr.lon - lon0) / (lon1 - lon0) * 100)|round(1) %}
+        {% set y = ((lat1 - ctr.lat) / (lat1 - lat0) * 100)|round(1) %}
+        <a href="/locations/{{ ctr.slug }}/" class="group absolute -translate-x-1/2 -translate-y-full" style="left: {{ x }}%; top: {{ y }}%">
+          <span class="mb-1 block whitespace-nowrap rounded-full bg-white px-2.5 py-1 text-[11px] font-semibold text-ink shadow-soft ring-1 ring-ink/5 transition group-hover:bg-ink group-hover:text-white sm:text-xs">{{ ctr.name.split(' (')[0] }}</span>
+          <span class="mx-auto block h-3.5 w-3.5 rounded-full border-[3px] border-white bg-brand-500 shadow"></span>
+        </a>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</section>
+
+{# ---------- Centre list ---------- #}
+<section class="wrap space-y-6">
+  {% for ctr in centres %}
+  {% set now_units = ctr.openings|selectattr('now')|list %}
+  {% set cabins_next = ctr.openings|selectattr('type', 'equalto', 'Private cabin')|list %}
+  <article class="card group grid overflow-hidden lg:grid-cols-12">
+    <a href="/locations/{{ ctr.slug }}/" class="relative block overflow-hidden lg:col-span-5">
+      {{ img(ctr.image, 'Inside Launchbench ' ~ ctr.name, 'h-full min-h-[15rem] w-full object-cover transition duration-500 group-hover:scale-105', '(min-width: 1024px) 480px, 100vw') }}
+      {% if ctr.tag %}<span class="absolute left-4 top-4 rounded-full bg-white/95 px-2.5 py-1 text-xs font-semibold capitalize text-ink">{{ ctr.tag }}</span>{% endif %}
+    </a>
+    <div class="flex flex-col p-6 sm:p-8 lg:col-span-7">
+      <div class="flex flex-wrap items-baseline justify-between gap-3">
+        <h2 class="text-2xl font-extrabold"><a href="/locations/{{ ctr.slug }}/" class="hover:text-brand-600">{{ ctr.name }}</a></h2>
+        <span class="text-sm text-ink-400">{{ ctr.seats }} seats</span>
+      </div>
+      <p class="mt-2 flex gap-2 text-sm text-ink-600">{{ icon('pin', 'mt-0.5 h-4 w-4 shrink-0 text-brand-500') }} {{ ctr.address }}</p>
+      <p class="mt-4 leading-relaxed text-ink-500">{{ ctr.blurb }}</p>
+      <div class="mt-5 flex flex-wrap gap-2">
+        <span class="chip {{ 'bg-leaf-100 text-leaf-600' if ctr.metro_walk else '' }}">{{ icon('train', 'h-3.5 w-3.5') }} {{ ctr.metro_short }}</span>
+        {% if ctr.pet_friendly %}<span class="chip">{{ icon('paw', 'h-3.5 w-3.5') }} Pet-friendly</span>{% endif %}
+        {% if ctr.has_event_hall %}<span class="chip">{{ icon('users', 'h-3.5 w-3.5') }} {{ ctr.hall_size }}-seat event hall</span>{% endif %}
+        <span class="chip">{{ icon('building', 'h-3.5 w-3.5') }} Cabins up to {{ ctr.cabin_sizes|max }} seats</span>
+        {% if cabins_next %}<span class="chip bg-brand-50 text-brand-700">{{ icon('calendar', 'h-3.5 w-3.5') }} Cabin {{ 'available now' if cabins_next[0].now else 'from ' ~ cabins_next[0].from_nice }}</span>{% endif %}
+      </div>
+      <div class="flex-1"></div>
+      <div class="mt-6 flex flex-col gap-5 border-t border-ink/5 pt-5 sm:flex-row sm:items-end sm:justify-between">
+        <dl class="grid grid-cols-3 gap-6">
+          <div><dt class="text-xs text-ink-400">Hot desk</dt><dd class="font-display text-lg font-bold">{{ ctr.price_hot|inr }}</dd></div>
+          <div><dt class="text-xs text-ink-400">Dedicated</dt><dd class="font-display text-lg font-bold">{{ ctr.price_ded|inr }}</dd></div>
+          <div><dt class="text-xs text-ink-400">Cabin, per seat</dt><dd class="font-display text-lg font-bold">{{ ctr.price_cab|inr }}</dd></div>
+        </dl>
+        <a href="/locations/{{ ctr.slug }}/" class="link-arrow shrink-0">View centre {{ icon('arrow', 'h-4 w-4') }}</a>
+      </div>
+    </div>
+  </article>
+  {% endfor %}
+  <p class="text-sm text-ink-400">Prices per seat per month, excluding 18% GST.</p>
+</section>
+
+{# ---------- Comparison ---------- #}
+<section class="wrap pt-24">
+  {{ section_head('Which centre suits you?') }}
+  <div class="card mt-10 overflow-x-auto">
+    <table class="w-full min-w-[46rem] text-left text-sm">
+      <thead>
+        <tr class="border-b border-ink/5 text-ink-400">
+          {% for h in ['Centre', 'Seats', 'Largest cabin', 'Event hall', 'Metro within 1 km', 'Pets', 'Hot desk from'] %}<th class="p-5 font-medium">{{ h }}</th>{% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for ctr in centres %}
+        <tr class="border-b border-ink/5 last:border-0">
+          <th scope="row" class="p-5"><a class="font-semibold text-ink hover:text-brand-600" href="/locations/{{ ctr.slug }}/">{{ ctr.name }}</a></th>
+          <td class="p-5 text-ink-700">{{ ctr.seats }}</td>
+          <td class="p-5 text-ink-700">{{ ctr.cabin_sizes|max }} seats</td>
+          <td class="p-5 text-ink-700">{{ ctr.hall_size ~ ' people' if ctr.has_event_hall else '—' }}</td>
+          <td class="p-5">{% if ctr.metro_walk %}<span class="text-leaf-600">{{ icon('check', 'h-4 w-4') }}</span>{% else %}<span class="text-ink-300">—</span>{% endif %}</td>
+          <td class="p-5">{% if ctr.pet_friendly %}<span class="text-leaf-600">{{ icon('check', 'h-4 w-4') }}</span>{% else %}<span class="text-ink-300">—</span>{% endif %}</td>
+          <td class="p-5 font-semibold text-ink">{{ ctr.price_hot|inr }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p class="mt-4 text-sm text-ink-400">Centres are closed to hot desks and day passes on Sundays and on Republic Day, Ugadi, Independence Day, Gandhi Jayanti, Deepavali, Kannada Rajyotsava and Christmas.</p>
+</section>
+
+{{ cta_band('See a centre before you decide.', 'Tours take about 30 minutes, Monday to Saturday between 10 am and 6 pm. Tell us which centre and we\'ll have the space ready to show.') }}
+{% endblock %}

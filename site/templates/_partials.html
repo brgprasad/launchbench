@@ -1,0 +1,76 @@
+{% from "_icons.html" import icon, img %}
+
+{# Page header used by every inner page. `title` may contain markup. #}
+{% macro page_hero(eyebrow, title, lede, image=None, alt='', primary=None, secondary=None) -%}
+<section class="relative overflow-hidden">
+  <div class="pointer-events-none absolute -right-40 -top-48 h-[32rem] w-[32rem] rounded-full bg-brand-100/60 blur-3xl"></div>
+  <div class="wrap relative grid items-center gap-10 pb-14 pt-10 lg:grid-cols-12 lg:gap-12 lg:pb-20 lg:pt-16">
+    <div class="{{ 'lg:col-span-6' if image else 'lg:col-span-9' }}">
+      <span class="eyebrow">{{ eyebrow }}</span>
+      <h1 class="mt-5 text-[2.4rem] font-extrabold leading-[1.08] text-ink sm:text-5xl lg:text-[3.4rem]">{{ title }}</h1>
+      <p class="mt-6 max-w-2xl text-lg leading-relaxed text-ink-500">{{ lede }}</p>
+      {% if primary or secondary %}
+      <div class="mt-8 flex flex-wrap gap-3">
+        {% if primary %}<a href="{{ primary[1] }}" class="btn-primary px-6 py-3.5 text-base">{{ primary[0] }} {{ icon('arrow', 'h-4 w-4') }}</a>{% endif %}
+        {% if secondary %}<a href="{{ secondary[1] }}" class="btn-ghost px-6 py-3.5 text-base">{{ secondary[0] }}</a>{% endif %}
+      </div>
+      {% endif %}
+    </div>
+    {% if image %}
+    <div class="lg:col-span-6">
+      {{ img(image, alt, 'aspect-[4/3] w-full rounded-[2rem] object-cover shadow-lift', '(min-width: 1024px) 600px, 100vw', eager=true) }}
+    </div>
+    {% endif %}
+  </div>
+</section>
+{%- endmacro %}
+
+{# Section heading with an optional link on the right. #}
+{% macro section_head(title, lede=None, link=None) -%}
+<div class="flex flex-col justify-between gap-6 sm:flex-row sm:items-end">
+  <div>
+    <h2 class="section-title">{{ title }}</h2>
+    {% if lede %}<p class="section-lede">{{ lede }}</p>{% endif %}
+  </div>
+  {% if link %}<a href="{{ link[1] }}" class="link-arrow shrink-0">{{ link[0] }} {{ icon('arrow', 'h-4 w-4') }}</a>{% endif %}
+</div>
+{%- endmacro %}
+
+{# One FAQ accordion item: {% call qa('Question?') %}Answer{% endcall %} #}
+{% macro qa(q, open=false) -%}
+<details class="card group p-6 [&_summary::-webkit-details-marker]:hidden" {% if open %}open{% endif %}>
+  <summary class="flex cursor-pointer list-none items-center justify-between gap-4 font-semibold">
+    {{ q }}
+    <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-cream-100 text-ink transition group-open:rotate-45">{{ icon('plus', 'h-4 w-4') }}</span>
+  </summary>
+  <div class="prose-lb mt-3 space-y-3 leading-relaxed text-ink-500">{{ caller() }}</div>
+</details>
+{%- endmacro %}
+
+{# Orange call-to-action band at the bottom of most pages. #}
+{% macro cta_band(title='Come and see it for yourself.', text='Tours run Monday to Saturday, 10 am to 6 pm, at any of our five centres. Thirty minutes, a cup of filter coffee, no hard sell.', href='/book-a-tour/', label='Book a tour', alt=('View pricing', '/pricing/')) -%}
+<section class="wrap pt-28">
+  <div class="relative overflow-hidden rounded-[2.5rem] bg-brand-500 px-8 py-14 text-white sm:px-14 lg:py-20">
+    {{ img('city-skyline', '', 'pointer-events-none absolute inset-0 h-full w-full object-cover opacity-20 mix-blend-multiply', '100vw') }}
+    <div class="relative max-w-2xl">
+      <h2 class="font-display text-3xl font-extrabold leading-tight sm:text-5xl">{{ title }}</h2>
+      <p class="mt-5 text-lg text-white/85">{{ text }}</p>
+      <div class="mt-8 flex flex-wrap gap-3">
+        <a href="{{ href }}" class="btn bg-white px-6 py-3.5 text-base text-ink hover:bg-cream">{{ label }} {{ icon('arrow', 'h-4 w-4') }}</a>
+        <a href="{{ alt[1] }}" class="btn px-6 py-3.5 text-base text-white ring-1 ring-white/50 hover:bg-white/10">{{ alt[0] }}</a>
+      </div>
+    </div>
+  </div>
+</section>
+{%- endmacro %}
+
+{# Small labelled fact, used in fact grids. #}
+{% macro fact(label, value, ic=None) -%}
+<div class="flex gap-3">
+  {% if ic %}<span class="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-600 ring-1 ring-brand-100">{{ icon(ic, 'h-4 w-4') }}</span>{% endif %}
+  <div>
+    <dt class="text-xs font-semibold uppercase tracking-wider text-ink-400">{{ label }}</dt>
+    <dd class="prose-lb mt-1 text-sm leading-relaxed text-ink-600">{{ value }}</dd>
+  </div>
+</div>
+{%- endmacro %}

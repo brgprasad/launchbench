@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon, img %}
+{% block title %}Book a tour · {{ c.brand.name }} coworking in Bengaluru{% endblock %}
+{% block description %}Book a free 30-minute tour of any Launchbench centre in Bengaluru, Monday to Saturday, 10 am to 6 pm.{% endblock %}
+{% block main %}
+
+<section class="relative overflow-hidden">
+  <div class="pointer-events-none absolute -right-40 -top-48 h-[32rem] w-[32rem] rounded-full bg-brand-100/60 blur-3xl"></div>
+  <div class="wrap relative grid gap-12 pb-8 pt-10 lg:grid-cols-12 lg:pt-16">
+    <div class="lg:col-span-5">
+      <span class="eyebrow">Book a tour</span>
+      <h1 class="mt-5 text-[2.4rem] font-extrabold leading-[1.08] sm:text-5xl">See it <span class="text-brand-500">in person.</span></h1>
+      <p class="mt-6 text-lg leading-relaxed text-ink-500">Email us about your team and when you'd like to visit. We'll reply to confirm a slot at the centre of your choice.</p>
+
+      <ol class="mt-10 space-y-6">
+        {% for title, text in [
+          ('Email us', 'Takes a minute. The more you tell us, the better we can match a space.'),
+          ('We confirm by email', 'Your account manager replies with a time, Monday to Saturday between 10 am and 6 pm.'),
+          ('Visit for 30 minutes', 'Walk the floor, see the cabins that fit and have a coffee with the community team.'),
+        ] %}
+        <li class="flex gap-4">
+          <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-ink font-display text-sm font-bold text-white">{{ loop.index }}</span>
+          <div><p class="font-semibold">{{ title }}</p><p class="mt-0.5 text-sm text-ink-500">{{ text }}</p></div>
+        </li>
+        {% endfor %}
+      </ol>
+
+      <div class="mt-10 flex gap-4 rounded-[1.5rem] bg-leaf-100 p-6">
+        <span class="text-leaf-600">{{ icon('sparkle', 'h-6 w-6') }}</span>
+        <p class="text-sm leading-relaxed text-ink-600"><strong class="text-ink">Team of 5 or more?</strong> Ask for a free 1-day trial of the space you shortlist, before you sign anything.</p>
+      </div>
+    </div>
+
+    <div class="lg:col-span-7">
+      <div class="card p-6 sm:p-10">
+        <span class="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-100 text-brand-600">{{ icon('sparkle', 'h-6 w-6') }}</span>
+        <h2 class="mt-6 font-display text-2xl font-extrabold sm:text-3xl">Request a tour by email</h2>
+        <p class="mt-3 leading-relaxed text-ink-500">One email is all it takes. Tell us a little about your team and we'll suggest the spaces that fit before you visit.</p>
+        <p class="mt-8 text-sm font-semibold text-ink">Helpful to include</p>
+        <ul class="mt-3 grid gap-3 sm:grid-cols-2">
+          {% for item in ['Your name and company', 'How many seats you need', 'Your preferred centre, or the area you work in', 'When you would like to move in', 'Your monthly budget, if you have one', 'Days and times that suit you for a visit'] %}
+          <li class="flex gap-2.5 text-sm text-ink-600"><span class="mt-0.5 text-leaf-600">{{ icon('check', 'h-4 w-4') }}</span>{{ item }}</li>
+          {% endfor %}
+        </ul>
+        {% set centre_names = {} %}{% for ctr in centres %}{% set _ = centre_names.update({ctr.code: ctr.name}) %}{% endfor %}
+        <div id="email" class="mt-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between scroll-mt-28">
+          <p class="text-xs leading-relaxed text-ink-400">Opens your email app with the subject and a short template filled in. <a href="/legal/#privacy" class="underline hover:text-ink">Privacy</a></p>
+          <a class="btn-primary shrink-0 px-7 py-3.5 text-base" href="/book-a-tour/" data-mail-u="{{ c.brand.email.split('@')[0] }}" data-mail-d="{{ c.brand.email.split('@')[1] }}" data-mail-tour='{{ centre_names|tojson }}' data-mail-b="Hi Launchbench team,&#10;&#10;We're a team of [number] looking for space at [centre or area], from [month]. We'd like to visit on [days and times].&#10;&#10;Thanks,&#10;[Your name], [Company]">Email us to book a tour {{ icon('arrow', 'h-4 w-4') }}</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="wrap pt-20">
+  <h2 class="section-title text-2xl sm:text-3xl">Where to find us</h2>
+  <div class="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-5">
+    {% for ctr in centres %}
+    <a href="/locations/{{ ctr.slug }}/" class="card group p-5 transition hover:-translate-y-1 hover:shadow-lift">
+      <p class="font-display font-bold group-hover:text-brand-600">{{ ctr.name }}</p>
+      <p class="mt-2 text-xs leading-relaxed text-ink-500">{{ ctr.address }}</p>
+      <p class="mt-3 flex items-center gap-1.5 text-xs text-ink-400">{{ icon('train', 'h-3.5 w-3.5 shrink-0') }} {{ ctr.metro_short }}</p>
+    </a>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

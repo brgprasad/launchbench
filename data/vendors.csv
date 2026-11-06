@@ -1,0 +1,7 @@
+vendor_id,vendor_name,category,gstin,po_number,billing_frequency,expected_min_inr,expected_max_inr,billing_email,email_domain,phone_on_file,bank_account_last4
+V01,SparkleServ Facility Services Pvt. Ltd.,Housekeeping,29AAKCS7731P1Z2,LB-PO-2026-014,Monthly,340000,380000,accounts@sparkleserv.in,sparkleserv.in,+91 80 0000 1101,4417
+V02,AirLink Fibernet Pvt. Ltd.,Internet leased lines,29AAGCA5520K1ZQ,LB-PO-2026-009,Monthly,185000,185000,billing@airlinkfibernet.in,airlinkfibernet.in,+91 80 0000 1102,9082
+V03,Guardian Shield Security Services,Security,29AAHFG3318R1Z9,LB-PO-2026-017,Monthly,210000,230000,finance@guardianshield.co.in,guardianshield.co.in,+91 80 0000 1103,3356
+V04,BeanBox Pantry Supplies LLP,Pantry supplies,29AARFB9042H1Z5,LB-PO-2026-021,Monthly,90000,130000,invoices@beanbox.co.in,beanbox.co.in,+91 80 0000 1104,7720
+V05,CoolBreeze HVAC Services,AC maintenance (AMC),29ABEPC6614L1Z3,LB-PO-2026-005,Quarterly,120000,120000,accounts@coolbreezehvac.in,coolbreezehvac.in,+91 80 0000 1105,1189
+V06,PrintHub Office Solutions,Printer lease,29AAJCP2287D1ZK,LB-PO-2026-011,Monthly,45000,45000,billing@printhub.in,printhub.in,+91 80 0000 1106,6604

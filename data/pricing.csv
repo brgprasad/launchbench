@@ -1,0 +1,47 @@
+sku,category,item,centre,unit,value,notes
+HOT-KOR,seat,Hot desk,KOR,INR per seat per month,8500,Month-to-month allowed; 8am-9pm Mon-Sat
+HOT-IND,seat,Hot desk,IND,INR per seat per month,8500,Month-to-month allowed; 8am-9pm Mon-Sat
+HOT-HSR,seat,Hot desk,HSR,INR per seat per month,7500,Month-to-month allowed; 8am-9pm Mon-Sat
+HOT-WHF,seat,Hot desk,WHF,INR per seat per month,6500,Month-to-month allowed; 8am-9pm Mon-Sat
+HOT-HEB,seat,Hot desk,HEB,INR per seat per month,6000,Month-to-month allowed; 8am-9pm Mon-Sat
+DED-KOR,seat,Dedicated desk,KOR,INR per seat per month,11000,Minimum 3-month lock-in; 24x7 access
+DED-IND,seat,Dedicated desk,IND,INR per seat per month,11500,Minimum 3-month lock-in; 24x7 access
+DED-HSR,seat,Dedicated desk,HSR,INR per seat per month,10000,Minimum 3-month lock-in; 24x7 access
+DED-WHF,seat,Dedicated desk,WHF,INR per seat per month,8500,Minimum 3-month lock-in; 24x7 access
+DED-HEB,seat,Dedicated desk,HEB,INR per seat per month,8000,Minimum 3-month lock-in; 24x7 access
+CAB-KOR,seat,Private cabin (per seat of cabin capacity),KOR,INR per seat per month,13500,Minimum 6-month lock-in; billed on full cabin capacity
+CAB-IND,seat,Private cabin (per seat of cabin capacity),IND,INR per seat per month,14000,Minimum 6-month lock-in; billed on full cabin capacity
+CAB-HSR,seat,Private cabin (per seat of cabin capacity),HSR,INR per seat per month,12000,Minimum 6-month lock-in; billed on full cabin capacity
+CAB-WHF,seat,Private cabin (per seat of cabin capacity),WHF,INR per seat per month,10000,Minimum 6-month lock-in; billed on full cabin capacity
+CAB-HEB,seat,Private cabin (per seat of cabin capacity),HEB,INR per seat per month,9500,Minimum 6-month lock-in; billed on full cabin capacity
+FND-KOR,seat,Founders Plan dedicated desk,KOR,INR per seat per month,9000,1-3 seats; 3-month lock-in; eligibility rules apply
+FND-IND,seat,Founders Plan dedicated desk,IND,INR per seat per month,9000,1-3 seats; 3-month lock-in; eligibility rules apply
+FND-HSR,seat,Founders Plan dedicated desk,HSR,INR per seat per month,9000,1-3 seats; 3-month lock-in; eligibility rules apply
+DAY-ALL,pass,Day pass (walk-in),ALL,INR per person per day,600,Hot desk 8am-9pm; includes 1 hour of 4-seater meeting room subject to availability
+GUEST-ALL,pass,Guest day pass (booked by a member),ALL,INR per person per day,400,Billed to the member on next invoice
+VO-BASIC,virtual,Virtual office - Basic,ALL,INR per month,2000,Business address + mail handling; billed annually upfront
+VO-GST,virtual,Virtual office - GST Registration,ALL,INR per month,3500,Basic + documents for GST/MCA registration; billed annually upfront
+MR-4,meeting,Meeting room 4-seater (list rate),ALL,INR per hour,600,Members pay 480 after 20% member discount
+MR-8,meeting,Meeting room 8-seater (list rate),ALL,INR per hour,1000,Members pay 800 after 20% member discount
+MR-12,meeting,Boardroom 12-seater (list rate),ALL,INR per hour,1500,Members pay 1200 after 20% member discount; uses 2 credits per hour
+EVT-KOR-HALF,event,Event hall Koramangala (80 pax) half day,KOR,INR per booking,22000,Up to 5 hours; AV + projector included
+EVT-KOR-FULL,event,Event hall Koramangala (80 pax) full day,KOR,INR per booking,40000,Up to 10 hours; AV + projector included
+EVT-WHF-HALF,event,Event hall Whitefield (120 pax) half day,WHF,INR per booking,26000,Up to 5 hours; AV + projector included
+EVT-WHF-FULL,event,Event hall Whitefield (120 pax) full day,WHF,INR per booking,48000,Up to 10 hours; AV + projector included
+PARK-CAR-KOR,addon,Car parking,KOR,INR per vehicle per month,4000,Covered; subject to availability
+PARK-CAR-IND,addon,Car parking,IND,INR per vehicle per month,4000,Very limited; waitlist
+PARK-CAR-HSR,addon,Car parking,HSR,INR per vehicle per month,3000,Covered; subject to availability
+PARK-CAR-WHF,addon,Car parking,WHF,INR per vehicle per month,3000,Covered; subject to availability
+PARK-CAR-HEB,addon,Car parking,HEB,INR per vehicle per month,3000,Covered; subject to availability
+PARK-BIKE-ALL,addon,Two-wheeler parking,ALL,INR per vehicle per month,800,
+LOCKER-ALL,addon,Personal locker,ALL,INR per locker per month,750,
+ACCESS247-HOT,addon,24x7 access for hot desk members,ALL,INR per seat per month,1500,Included free for dedicated desks / cabins / Founders Plan
+STATICIP-ALL,addon,Static public IP,ALL,INR per IP per month,1500,Private VLAN for cabins is free
+PRINT-BW,usage,Printing black & white,ALL,INR per page,3,After free quota (100 pages/seat/month for dedicated / cabin / Founders)
+PRINT-COL,usage,Printing colour,ALL,INR per page,10,After free quota
+CARD-REPLACE,usage,Access card replacement,ALL,INR per card,500,Also deducted from deposit if not returned at exit
+DISC-LOCKIN-6,discount,Lock-in discount 6 months,ALL,percent off seat fee,5,Seat fees only; not on add-ons/usage
+DISC-LOCKIN-12,discount,Lock-in discount 12 months,ALL,percent off seat fee,10,Seat fees only; not on add-ons/usage
+DISC-MEMBER-ROOMS,discount,Member discount on meeting rooms and event halls,ALL,percent off list rate,20,Applies to overage hours and event bookings
+DISC-PARTNER,discount,Partner programme discount,ALL,percent off seat fee,15,First 6 months only; does not stack with lock-in discount (higher one applies)
+TAX-GST,tax,GST on all services,ALL,percent,18,SAC 997212

@@ -1,0 +1,38 @@
+{% from "_icons.html" import mail %}
+{% extends "base.html" %}
+{% block title %}Privacy and terms · {{ c.brand.name }}{% endblock %}
+{% block main %}
+<section class="wrap max-w-3xl py-12 lg:py-16">
+  <span class="eyebrow">Legal</span>
+  <h1 class="mt-5 text-4xl font-extrabold sm:text-5xl">Privacy and terms</h1>
+  <p class="mt-4 text-ink-400">Last updated 1 April 2026</p>
+
+  <div class="mt-12 space-y-12 leading-relaxed text-ink-600 [&_h2]:font-display [&_h2]:text-2xl [&_h2]:font-bold [&_h2]:text-ink [&_p]:mt-4 [&_ul]:mt-4 [&_ul]:list-disc [&_ul]:space-y-2 [&_ul]:pl-5">
+    <section id="about" class="scroll-mt-28 rounded-[1.5rem] bg-brand-50 p-6 ring-1 ring-brand-100">
+      <h2>About this website</h2>
+      <p>{{ c.brand.disclaimer }} Please don't send sensitive personal information through this site.</p>
+    </section>
+
+    <section id="privacy" class="scroll-mt-28">
+      <h2>Privacy</h2>
+      <p>This website is operated by {{ c.brand.legal }}, {{ c.brand.registered_office }}.</p>
+      <ul>
+        <li><strong>What we collect.</strong> Only what you send us by email: usually your name, email address, company, team size, preferred centre and move-in month.</li>
+        <li><strong>How we use it.</strong> To reply to your enquiry by email. We don't add you to a mailing list, and we don't sell or share your details.</li>
+        <li><strong>Cookies.</strong> This site doesn't set cookies or use analytics or advertising trackers. Maps on centre pages are loaded from OpenStreetMap.</li>
+        <li><strong>Your choices.</strong> {{ mail(c.brand.email, "Email us", "font-semibold text-brand-600 hover:underline") }} to ask what we hold about you, or to have it deleted.</li>
+      </ul>
+    </section>
+
+    <section id="terms" class="scroll-mt-28">
+      <h2>Terms of use</h2>
+      <ul>
+        <li>Prices on this site are in Indian Rupees, per month unless stated, and exclude 18% GST. They're effective from 1 April 2026 and may change.</li>
+        <li>Availability shown on centre pages is indicative and is confirmed only in writing by our sales team.</li>
+        <li>Memberships are governed by the signed Membership Agreement. If anything on this site differs from it, the agreement applies.</li>
+        <li>Photographs are illustrative. Images are used under the Unsplash licence.</li>
+      </ul>
+    </section>
+  </div>
+</section>
+{% endblock %}

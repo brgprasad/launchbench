@@ -1,0 +1,594 @@
+{
+  "name": "LB · WF-T Test runner",
+  "nodes": [
+    {
+      "id": "7d112c7d-6fe5-4829-a849-15b8fdec155f",
+      "name": "Run test kit",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        100
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "47f7740f-9cb1-40c4-9d1a-4123e9b63e93",
+      "name": "Which seeds",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        220,
+        100
+      ],
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "w1",
+              "name": "only",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "w2",
+              "name": "triage_only",
+              "value": true,
+              "type": "boolean"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "1c1b65de-7f77-470b-bfcf-2bd1473623e0",
+      "name": "Read personas",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        440,
+        100
+      ],
+      "parameters": {
+        "resource": "sheet",
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "1H7tY4fWsIw1oRcwpeVHbTxD3Bt4XkBYT3rowPsEYwCk",
+          "cachedResultName": "Launchbench Data"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "personas"
+        },
+        "options": {}
+      },
+      "executeOnce": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "J6ToBRhna1sIl1I6",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "id": "7bd31247-c752-4504-861b-71d270e06fc0",
+      "name": "List kit attachments",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        660,
+        100
+      ],
+      "parameters": {
+        "resource": "fileFolder",
+        "operation": "search",
+        "searchMethod": "name",
+        "queryString": ".pdf",
+        "returnAll": true,
+        "filter": {
+          "folderId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "1WP-bXs6mAjwyLpj0hQEtkC-CdK8HqsGm",
+            "cachedResultName": "Test Kit/attachments"
+          },
+          "whatToSearch": "files"
+        },
+        "options": {
+          "fields": [
+            "id",
+            "name"
+          ]
+        }
+      },
+      "executeOnce": true,
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "KthDAzjRrmWcfPik",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "id": "f8e26313-d5c3-4b6f-a895-e8fde34d0a3e",
+      "name": "List seed emails",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        880,
+        100
+      ],
+      "parameters": {
+        "resource": "fileFolder",
+        "operation": "search",
+        "searchMethod": "name",
+        "queryString": ".md",
+        "returnAll": true,
+        "filter": {
+          "folderId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "1Sv8qFCOkYqmPlNpJOQrjyYKpjf8HBnma",
+            "cachedResultName": "Test Kit"
+          },
+          "whatToSearch": "files"
+        },
+        "options": {
+          "fields": [
+            "id",
+            "name"
+          ]
+        }
+      },
+      "executeOnce": true,
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "KthDAzjRrmWcfPik",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "id": "be79b90d-bd20-4155-bf6c-b763f3fe619f",
+      "name": "Keep chosen seeds",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.2,
+      "position": [
+        1100,
+        100
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.name.endsWith('.md') && ($('Which seeds').first().json.only.trim() === '' || $('Which seeds').first().json.only.split(',').map(s => s.trim().padStart(2, '0')).includes($json.name.slice(0, 2))) }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              },
+              "rightValue": ""
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "f8214f3c-ed78-4587-b5fe-babd9839d2e1",
+      "name": "Download seed",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        1320,
+        100
+      ],
+      "parameters": {
+        "resource": "file",
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $json.id }}"
+        },
+        "options": {}
+      },
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "KthDAzjRrmWcfPik",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "id": "b6bb2517-6804-479d-ba37-d777fb0aeb97",
+      "name": "Read seed text",
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.2,
+      "position": [
+        1540,
+        100
+      ],
+      "parameters": {
+        "operation": "text",
+        "binaryPropertyName": "data",
+        "destinationKey": "md"
+      }
+    },
+    {
+      "id": "52619c63-b097-42cb-a64b-292db0df5e86",
+      "name": "Parse seed",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1760,
+        100
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const personas = $('Read personas').all().map(p => p.json);\nconst pdfIds = {};\nfor (const a of $('List kit attachments').all()) pdfIds[a.json.name] = a.json.id;\n// Triage only: WF-0 classifies and logs each seed but runs no handler (no replies,\n// staff emails or approval cards). Turn it off in \"Which seeds\" for a full end-to-end run.\nconst triageOnly = Boolean($('Which seeds').first().json.triage_only);\n\nconst out = [];\nfor (const [index, item] of $input.all().entries()) {\n  const md = String(item.json.md || '').replace(/\\r/g, '');\n  const m = md.match(/^---\\n([\\s\\S]*?)\\n---\\n([\\s\\S]*)$/);\n  if (!m) throw new Error('Seed file without front matter: ' + $('Keep chosen seeds').all()[index].json.name);\n  const fm = {};\n  for (const line of m[1].split('\\n')) {\n    const kv = line.match(/^([a-z_]+):\\s?(.*)$/);\n    if (kv) fm[kv[1]] = kv[2].trim();\n  }\n  const from = (fm.from || '').match(/^(.*?)\\s*<([^>]+)>$/) || [null, '', fm.from || ''];\n  const address = from[2].toLowerCase();\n  const persona = personas.find(p => String(p.as_email).toLowerCase() === address);\n  const pdf = (fm.attachments || '').match(/attachments\\/([\\w.-]+\\.pdf)/);\n  out.push({\n    json: {\n      seed_id: String(fm.id).padStart(2, '0'),\n      seed_now: fm.date,\n      from_address: address,\n      from_name: from[1].replace(/^\"|\"$/g, ''),\n      subject: (persona ? '[as ' + persona.alias + '] ' : '') + (fm.subject || ''),\n      body: m[2].trim(),\n      expected_class: fm.expected_class || '',\n      pdf_name: pdf ? pdf[1] : '',\n      pdf_id: pdf ? (pdfIds[pdf[1]] || '') : '',\n      triage_only: triageOnly\n    },\n    pairedItem: { item: index }\n  });\n}\nreturn out.sort((a, b) => a.json.seed_id.localeCompare(b.json.seed_id));"
+      }
+    },
+    {
+      "id": "ffdcd786-e8be-4e20-8eae-cbc68c63a456",
+      "name": "Has PDF?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1980,
+        100
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.pdf_id }}",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              },
+              "rightValue": ""
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "7aad4bf6-40a6-4be4-b1d7-85f3779e8d12",
+      "name": "Download PDF",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        2200,
+        0
+      ],
+      "parameters": {
+        "resource": "file",
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $json.pdf_id }}"
+        },
+        "options": {
+          "binaryPropertyName": "attachment_0"
+        }
+      },
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "KthDAzjRrmWcfPik",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "id": "d7ec6e28-7730-406c-82b0-31f7a99ce678",
+      "name": "Put seed back with PDF",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2420,
+        0
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "language": "javaScript",
+        "jsCode": "return { json: $('Parse seed').item.json, binary: $input.item.binary };"
+      }
+    },
+    {
+      "id": "49c0ab96-051a-4820-ae84-2ee4ca237ed5",
+      "name": "Send to WF-0",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        2640,
+        140
+      ],
+      "parameters": {
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "GRkH0glRmqfPZQIG",
+          "cachedResultName": "LB · WF-0 Intake & triage"
+        },
+        "mode": "once",
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "alwaysOutputData": true
+    },
+    {
+      "id": "8621d91d-c21d-4621-8e2f-447e85747677",
+      "name": "Sticky Note 96142c9f",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        -320
+      ],
+      "parameters": {
+        "content": "## WF-T · Test runner\nRuns the seed emails in **Demos/Launchbench/Test Kit** through WF-0, exactly as if they had arrived by email but without sending any mail.\n\n- Set **Which seeds** to a list like `07, 11, 18`, or leave `only` empty for all 33.\n- **triage_only** on (default): WF-0 classifies and logs to `triage_log` but runs no handler. Use it for the regression. Off: the full pipeline runs (replies to +lb-testrun, staff emails, approval cards).\n- Seeds go in **one every 30 seconds**, like real traffic: firing them all at once would exceed Google Sheets' 60 reads a minute.\n- Each seed gets its persona tag (`[as routewise]`) and keeps its scripted date as `now`. Vendor-invoice seeds get their PDF from `Test Kit/attachments`.\n- Check results with `tools/score_triage.py` (triage only) or `tools/check_e2e.py` (full run); see docs/test-protocol.md.",
+        "color": 7,
+        "width": 640,
+        "height": 260
+      }
+    },
+    {
+      "id": "ba398588-4451-483f-a19a-dbb7f08e00fd",
+      "name": "One seed at a time",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        1980,
+        320
+      ],
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      }
+    },
+    {
+      "id": "ebf0d4ff-31a1-4917-b74e-60f1547bb783",
+      "name": "Wait 30 s",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        2860,
+        320
+      ],
+      "parameters": {
+        "resume": "timeInterval",
+        "amount": 30,
+        "unit": "seconds"
+      },
+      "webhookId": "59cc9a4a-8975-415a-9b29-9a9aea376866"
+    }
+  ],
+  "connections": {
+    "Run test kit": {
+      "main": [
+        [
+          {
+            "node": "Which seeds",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Which seeds": {
+      "main": [
+        [
+          {
+            "node": "Read personas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read personas": {
+      "main": [
+        [
+          {
+            "node": "List kit attachments",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "List kit attachments": {
+      "main": [
+        [
+          {
+            "node": "List seed emails",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "List seed emails": {
+      "main": [
+        [
+          {
+            "node": "Keep chosen seeds",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Keep chosen seeds": {
+      "main": [
+        [
+          {
+            "node": "Download seed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download seed": {
+      "main": [
+        [
+          {
+            "node": "Read seed text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read seed text": {
+      "main": [
+        [
+          {
+            "node": "Parse seed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has PDF?": {
+      "main": [
+        [
+          {
+            "node": "Download PDF",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send to WF-0",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download PDF": {
+      "main": [
+        [
+          {
+            "node": "Put seed back with PDF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Put seed back with PDF": {
+      "main": [
+        [
+          {
+            "node": "Send to WF-0",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse seed": {
+      "main": [
+        [
+          {
+            "node": "One seed at a time",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "One seed at a time": {
+      "main": [
+        null,
+        [
+          {
+            "node": "Has PDF?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send to WF-0": {
+      "main": [
+        [
+          {
+            "node": "Wait 30 s",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 30 s": {
+      "main": [
+        [
+          {
+            "node": "One seed at a time",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Asia/Kolkata",
+    "saveManualExecutions": true
+  },
+  "nodeGroups": [
+    {
+      "id": "69cf3e30-ec70-4c6e-aeee-b34df977c460",
+      "name": "Load the test kit",
+      "nodeNames": [
+        "Which seeds",
+        "Read personas",
+        "List kit attachments",
+        "List seed emails",
+        "Keep chosen seeds",
+        "Download seed",
+        "Read seed text",
+        "Parse seed"
+      ],
+      "description": "Read the chosen seed emails from Drive and turn each into an email-shaped item with its persona tag."
+    }
+  ],
+  "meta": {
+    "aiBuilderAssisted": true,
+    "builderVariant": "mcp"
+  },
+  "tags": [],
+  "id": "cHps1e3n8QnXh4hL",
+  "active": false,
+  "pinData": {}
+}

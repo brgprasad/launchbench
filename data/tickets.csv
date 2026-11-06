@@ -1,0 +1,4 @@
+ticket_id,received_at,member_id,company,centre,location,category,priority,description,sla_response_due,sla_resolution_due,assigned_to,escalated_to,status,linked_tickets,source,seed_id,sender,reply_by
+T-1031,2026-10-09 10:12,M004,Nimbus Byte Analytics Pvt. Ltd.,WHF,Cabin 5A,Housekeeping,P3,Cabin not cleaned on 8 Oct; dustbins overflowing,2026-10-10 10:12,2026-10-14 10:12,Sneha Pillai,,Resolved,,,,,
+T-1047,2026-10-23 09:40,M004,Nimbus Byte Analytics Pvt. Ltd.,WHF,Cabin 5A,Housekeeping,P3,Cabin skipped again; pantry area sticky; meeting room 5-2 not cleaned after booking,2026-10-24 09:40,2026-10-28 09:40,Sneha Pillai,,Resolved,,,,,
+T-1052,2026-10-27 18:05,M020,Pixelpatch Games Pvt. Ltd.,KOR,Cabin 3C,Network,P2,Intermittent LAN drops on 2 ports,2026-10-27 20:05,2026-10-28 18:05,Rohan D'Souza,,Resolved,,,,,

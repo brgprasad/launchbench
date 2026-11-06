@@ -1,0 +1,29 @@
+centre,space_type,cabin_size,units_available,available_from,space_ref,notes
+KOR,Hot desk,,25,2026-11-01,,
+KOR,Dedicated desk,,8,2026-11-01,,
+KOR,Private cabin,20,1,2026-11-16,Cabin 4A,Freshly refurbished
+KOR,Private cabin,12,1,2026-11-16,Cabin 4B,Adjacent to Cabin 4A (same floor)
+KOR,Private cabin,8,1,2026-11-16,Cabin 4C,Same floor as 4A/4B
+KOR,Private cabin,4,2,2026-12-01,Cabins 2E-2F,
+IND,Hot desk,,6,2026-11-01,,
+IND,Dedicated desk,,3,2026-11-01,,
+IND,Private cabin,16,1,2026-12-01,Cabin 3A,
+IND,Private cabin,8,1,2027-01-01,Cabin 2D,
+IND,Private cabin,6,1,2027-01-01,Cabin 2E,
+HSR,Hot desk,,20,2026-11-01,,Paws Zone desks: 6 of these
+HSR,Dedicated desk,,10,2026-11-01,,
+HSR,Private cabin,16,1,2026-11-16,Cabin 3A,
+HSR,Private cabin,4,1,2026-11-16,Cabin 1E,
+HSR,Private cabin,20,1,2026-12-01,Cabin 3B,
+HSR,Private cabin,6,1,2026-12-01,Cabin 2A,
+WHF,Hot desk,,30,2026-11-01,,
+WHF,Dedicated desk,,15,2026-11-01,,
+WHF,Private cabin,12,2,2026-11-16,Cabins 4A-4B,
+WHF,Private cabin,8,1,2026-11-16,Cabin 2B,
+WHF,Private cabin,30,1,2026-12-01,Cabin 6A,
+WHF,Private cabin,16,1,2027-01-01,Cabin 5C,Current occupant exits 2026-12-31
+HEB,Hot desk,,18,2026-11-01,,
+HEB,Dedicated desk,,12,2026-11-01,,
+HEB,Private cabin,12,1,2026-11-16,Cabin 1C,
+HEB,Private cabin,16,1,2026-12-01,Cabin 2B,
+HEB,Private cabin,20,1,2027-01-01,Cabin 2C,

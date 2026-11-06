@@ -1,0 +1,346 @@
+{
+ "07": {
+  "now": "2026-11-04T09:20:00+05:30",
+  "from": "Pradeep Gowda <pradeep@routewise.in>",
+  "subject": "AC not working in Cabin 3B - since Monday!!",
+  "as_alias": "routewise",
+  "identity": "",
+  "classifier": {
+   "desk": "support",
+   "intents": [
+    {
+     "class": "facility_issue",
+     "subclass": "ac",
+     "summary": "AC not working in Cabin 3B at Whitefield since Monday"
+    }
+   ],
+   "language": "en",
+   "sentiment": "negative",
+   "churn_risk": true,
+   "identity_clues": {
+    "company": "RouteWise Logistics",
+    "member_id": "",
+    "invoice_numbers": [],
+    "gstin": "",
+    "cabin": "Cabin 3B",
+    "centre": "WHF"
+   },
+   "issue": {
+    "location": "Cabin 3B, Whitefield",
+    "category": "ac",
+    "suggested_priority": "P1",
+    "since": "2026-11-02",
+    "repeat_claimed": true
+   },
+   "attachments_claimed_but_missing": false,
+   "fraud_signals": [],
+   "confidence": 1,
+   "reasoning": "The email reports a critical AC failure in a cabin lasting multiple days with previous unaddressed reports, raising the priority to P1 due to repeat claims and urgency, routed to support."
+  }
+ },
+ "08": {
+  "now": "2026-11-03T10:31:00+05:30",
+  "from": "Daniel Fernandes <daniel@pixelpatch.games>",
+  "subject": "Internet down - whole 3rd floor KOR",
+  "as_alias": "pixelpatch",
+  "identity": "",
+  "classifier": {
+   "desk": "support",
+   "intents": [
+    {
+     "class": "facility_issue",
+     "subclass": "internet",
+     "summary": "Internet down on the entire 3rd floor at Koramangala affecting Wi-Fi and LAN."
+    }
+   ],
+   "language": "en",
+   "sentiment": "negative",
+   "churn_risk": false,
+   "identity_clues": {
+    "company": "Pixelpatch Games",
+    "member_id": "",
+    "invoice_numbers": [],
+    "gstin": "",
+    "cabin": "Cabin 3C",
+    "centre": "KOR"
+   },
+   "issue": {
+    "location": "3rd floor",
+    "category": "internet",
+    "suggested_priority": "P1",
+    "since": "2026-11-03T10:15:00+05:30",
+    "repeat_claimed": false
+   },
+   "attachments_claimed_but_missing": false,
+   "fraud_signals": [],
+   "confidence": 1,
+   "reasoning": "The email reports a complete internet outage affecting an entire floor at the Koramangala centre, which is classified as a P1 facility issue under the support desk."
+  }
+ },
+ "09": {
+  "now": "2026-11-03T18:47:00+05:30",
+  "from": "Sanjay Bhat <sanjay@gurukulonline.in>",
+  "subject": "chairs + printer",
+  "as_alias": "gurukul",
+  "identity": "",
+  "classifier": {
+   "desk": "support",
+   "intents": [
+    {
+     "class": "facility_issue",
+     "subclass": "furniture",
+     "summary": "Two broken chairs with wheels off in Cabin 2C"
+    },
+    {
+     "class": "facility_issue",
+     "subclass": "printer",
+     "summary": "Printer jammed again, third time this month in Cabin 2C"
+    }
+   ],
+   "language": "hinglish",
+   "sentiment": "negative",
+   "churn_risk": false,
+   "identity_clues": {
+    "company": "",
+    "member_id": "",
+    "invoice_numbers": [],
+    "gstin": "",
+    "cabin": "Cabin 2C",
+    "centre": ""
+   },
+   "issue": {
+    "location": "Cabin 2C",
+    "category": "furniture",
+    "suggested_priority": "P2",
+    "since": "2026-11-03",
+    "repeat_claimed": true
+   },
+   "attachments_claimed_but_missing": false,
+   "fraud_signals": [],
+   "confidence": 0.98,
+   "reasoning": "The email reports broken chairs and a repeatedly jamming printer in Cabin 2C, which are facility issues categorized under furniture and printer. Because it's a repeat issue within 30 days, the priority is elevated to P2."
+  }
+ },
+ "10": {
+  "now": "2026-11-04T14:02:00+05:30",
+  "from": "Karthik Subramanian <karthik@nimbusbyte.in>",
+  "subject": "Housekeeping - third complaint. Seriously reconsidering our membership.",
+  "as_alias": "nimbus",
+  "identity": "",
+  "classifier": {
+   "desk": "support",
+   "intents": [
+    {
+     "class": "facility_issue",
+     "subclass": "housekeeping",
+     "summary": "Housekeeping not done, overflowing bins, and messy pantry in Cabin 5A (third complaint in a month)."
+    }
+   ],
+   "language": "en",
+   "sentiment": "negative",
+   "churn_risk": true,
+   "identity_clues": {
+    "company": "Nimbus Byte Analytics",
+    "member_id": "",
+    "invoice_numbers": [],
+    "gstin": "",
+    "cabin": "Cabin 5A",
+    "centre": ""
+   },
+   "lead": {
+    "team_size": 0,
+    "centres": [],
+    "near_metro": false,
+    "move_in": "",
+    "budget_inr": 0,
+    "budget_includes_gst": "",
+    "partner": "",
+    "incorporated": ""
+   },
+   "issue": {
+    "location": "Cabin 5A",
+    "category": "housekeeping",
+    "suggested_priority": "P1",
+    "since": "2026-11-04",
+    "repeat_claimed": true
+   },
+   "billing": {
+    "invoice_numbers": [],
+    "topic": "",
+    "new_gstin": "",
+    "tds_section": ""
+   },
+   "change": {
+    "type": "",
+    "seats_from": 0,
+    "seats_to": 0,
+    "effective": ""
+   },
+   "attachments_claimed_but_missing": false,
+   "fraud_signals": [],
+   "confidence": 1,
+   "reasoning": "The email reports a repeat housekeeping issue for Cabin 5A (third time in a month) which escalates the priority to P1 per facility rules, and the member explicitly hints at leaving next year, creating a high churn risk."
+  }
+ },
+ "15": {
+  "now": "2026-11-03T13:15:00+05:30",
+  "from": "Neha Kapoor <neha@swasthai.in>",
+  "subject": "Wi-Fi issue + need October invoice copy",
+  "as_alias": "swasth",
+  "identity": "",
+  "classifier": {
+   "desk": "support",
+   "intents": [
+    {
+     "class": "facility_issue",
+     "subclass": "internet",
+     "summary": "Wi-Fi in cabin 1D keeps dropping every 15-20 minutes for the last 2 days"
+    },
+    {
+     "class": "customer_billing",
+     "subclass": "invoice_request",
+     "summary": "Request for a copy of the October invoice for auditing purposes"
+    }
+   ],
+   "language": "en",
+   "sentiment": "neutral",
+   "churn_risk": false,
+   "identity_clues": {
+    "company": "Swasth AI",
+    "member_id": "",
+    "invoice_numbers": [],
+    "gstin": "",
+    "cabin": "Cabin 1D",
+    "centre": "HEB"
+   },
+   "lead": {
+    "team_size": 0,
+    "centres": [],
+    "near_metro": false,
+    "move_in": "",
+    "budget_inr": 0,
+    "budget_includes_gst": "",
+    "plan_interest": "",
+    "partner": "",
+    "incorporated": ""
+   },
+   "issue": {
+    "location": "Cabin 1D, Hebbal",
+    "category": "internet",
+    "suggested_priority": "P2",
+    "since": "2026-11-01",
+    "repeat_claimed": false
+   },
+   "billing": {
+    "invoice_numbers": [],
+    "topic": "invoice copy request",
+    "new_gstin": "",
+    "tds_section": ""
+   },
+   "change": {
+    "type": "",
+    "seats_from": 0,
+    "seats_to": 0,
+    "effective": ""
+   },
+   "attachments_claimed_but_missing": false,
+   "fraud_signals": [],
+   "confidence": 0.95,
+   "reasoning": "The email primarily reports a technical/facility issue (Wi-Fi dropping in cabin 1D at Hebbal) which maps to support, and also requests an invoice copy which maps to billing. Since the facility issue is the first and most urgent operational request, support is selected as the primary desk."
+  }
+ },
+ "30": {
+  "now": "2026-11-04T10:12:00+05:30",
+  "from": "Anu R <anu.r@example.com>",
+  "subject": "AC",
+  "as_alias": "",
+  "identity": "",
+  "classifier": {
+   "desk": "support",
+   "intents": [
+    {
+     "class": "facility_issue",
+     "subclass": "ac",
+     "summary": "AC is not working in Cabin 3B again."
+    }
+   ],
+   "language": "en",
+   "sentiment": "negative",
+   "churn_risk": false,
+   "identity_clues": {
+    "company": "",
+    "member_id": "",
+    "invoice_numbers": [],
+    "gstin": "",
+    "cabin": "Cabin 3B",
+    "centre": ""
+   },
+   "lead": {
+    "centres": [],
+    "near_metro": false,
+    "budget_inr": 0,
+    "budget_includes_gst": ""
+   },
+   "issue": {
+    "location": "Cabin 3B",
+    "category": "ac",
+    "suggested_priority": "P2",
+    "repeat_claimed": true
+   },
+   "billing": {
+    "invoice_numbers": [],
+    "topic": "",
+    "new_gstin": "",
+    "tds_section": ""
+   },
+   "change": {
+    "type": "",
+    "seats_from": 0,
+    "seats_to": 0
+   },
+   "attachments_claimed_but_missing": false,
+   "fraud_signals": [],
+   "confidence": 1,
+   "reasoning": "The email reports a broken AC in Cabin 3B ('again'), which is classified as a facility issue and routed to support."
+  }
+ },
+ "31": {
+  "now": "2026-11-04T09:05:00+05:30",
+  "from": "Vivek Sharma <vivek.sharma@example.com>",
+  "subject": "इंटरनेट बंद है",
+  "as_alias": "",
+  "identity": "",
+  "classifier": {
+   "desk": "support",
+   "intents": [
+    {
+     "class": "facility_issue",
+     "subclass": "internet",
+     "summary": "Internet is not working in Cabin 2A since yesterday evening."
+    }
+   ],
+   "language": "other",
+   "sentiment": "negative",
+   "churn_risk": false,
+   "identity_clues": {
+    "company": "",
+    "member_id": "",
+    "invoice_numbers": [],
+    "gstin": "",
+    "cabin": "Cabin 2A",
+    "centre": "KOR"
+   },
+   "issue": {
+    "location": "Cabin 2A",
+    "category": "internet",
+    "suggested_priority": "P2",
+    "since": "2026-11-03",
+    "repeat_claimed": false
+   },
+   "attachments_claimed_but_missing": false,
+   "fraud_signals": [],
+   "confidence": 1,
+   "reasoning": "The email reports an internet outage in Cabin 2A at the Koramangala centre, written in Hindi/other script, which is a facility issue (P2 high priority as it affects one cabin's internet)."
+  }
+ }
+}

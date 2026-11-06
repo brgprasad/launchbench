@@ -1,0 +1,21 @@
+alias,type,ref_id,as_email,as_name,good_for
+routewise,member,M007,pradeep@routewise.in,Pradeep Gowda,Facility issues (WHF Cabin 3B)
+pixelpatch,member,M020,daniel@pixelpatch.games,Daniel Fernandes,P1 outages; repeat-ticket detection (KOR Cabin 3C)
+gurukul,member,M008,sanjay@gurukulonline.in,Sanjay Bhat,Minor issues; informal/Hinglish emails (HSR Cabin 2C)
+nimbus,member,M004,karthik@nimbusbyte.in,Karthik Subramanian,Angry or churn-risk complaints (WHF Cabin 5A)
+swasth,member,M005,neha@swasthai.in,Neha Kapoor,Multi-intent emails (HEB Cabin 1D)
+tiffinly,member,M001,rahul@tiffinly.in,Rahul Verma,Meeting-room overage dispute
+cartwheel,member,M024,megha@cartwheel.shop,Megha Sharma,Billed after exit; deposit refund
+kiraaya,member,M018,abhishek@kiraaya.in,Abhishek Nair,GSTIN change
+dhoop,member,M016,venkatesh@dhoopsolar.in,Venkatesh Iyer,TDS questions
+paysetu,member,M002,shruti@paysetu.in,Shruti Agarwal,Downsizing in lock-in; overdue invoice
+fernweh,member,M009,tanvi@fernweh.travel,Tanvi Joshi,Notice to exit
+kalakaar,member,M006,aisha@kalakaar.studio,Aisha Siddiqui,Upsell: desks to cabin
+zenith,member,M025,anil@zenithpayroll.in,Anil Thomas,House-rule questions (pets etc.)
+lingolab,member,M017,ishita@lingolab.ai,Ishita Sen,Event-hall booking (Founders Plan member)
+bytebazaar,member,M015,zoya@bytebazaar.in,Zoya Ahmed,Access and delivery questions; upsell
+airlink,vendor,V02,billing@airlinkfibernet.in,AirLink Fibernet Billing,Clean vendor invoice
+sparkleserv,vendor,V01,accounts@sparkleserv.in,SparkleServ Accounts,Over-range vendor invoice
+beanbox,vendor,V04,invoices@beanbox.co.in,BeanBox Invoices,Vendor invoice missing PO
+sparkleserv-fake,impostor,V01,accounts@sparkleserv-billing.in,SparkleServ Finance,Bank-change fraud attempt (look-alike domain)
+guardianshield,vendor,V03,finance@guardianshield.co.in,Guardian Shield Finance,Invoice with a changed bank account (fraud from a genuine domain)

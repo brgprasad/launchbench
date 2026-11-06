@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon %}
+{% block title %}Page not found · {{ c.brand.name }}{% endblock %}
+{% block main %}
+<section class="wrap py-24 text-center lg:py-32">
+  <p class="font-display text-7xl font-extrabold text-brand-500 sm:text-8xl">404</p>
+  <h1 class="mt-6 text-3xl font-extrabold sm:text-4xl">This page has left the building.</h1>
+  <p class="mx-auto mt-4 max-w-md text-lg text-ink-500">It may have moved, or the link may be mistyped. These are good places to start again.</p>
+  <div class="mt-10 flex flex-wrap justify-center gap-3">
+    <a href="/" class="btn-primary">Home {{ icon('arrow', 'h-4 w-4') }}</a>
+    <a href="/locations/" class="btn-ghost">Locations</a>
+    <a href="/pricing/" class="btn-ghost">Pricing</a>
+    <a href="/book-a-tour/" class="btn-ghost">Book a tour</a>
+  </div>
+</section>
+{% endblock %}

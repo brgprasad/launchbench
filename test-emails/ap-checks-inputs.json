@@ -1,0 +1,236 @@
+{
+ "18": {
+  "now": "2026-11-02T09:12:00+05:30",
+  "from": "AirLink Fibernet Billing <billing@airlinkfibernet.in>",
+  "as_alias": "airlink",
+  "subject": "Invoice ALF/2026/11/0912 - November 2026",
+  "classifier": {
+   "desk": "ap",
+   "intents": [
+    {
+     "class": "vendor_invoice",
+     "subclass": "invoice",
+     "summary": "AirLink Fibernet sent an invoice for November 2026 leased-line services."
+    }
+   ],
+   "language": "en",
+   "sentiment": "neutral",
+   "churn_risk": false,
+   "identity_clues": {
+    "company": "AirLink Fibernet Pvt. Ltd.",
+    "member_id": "",
+    "invoice_numbers": [
+     "ALF/2026/11/0912"
+    ],
+    "gstin": "",
+    "cabin": "",
+    "centre": ""
+   },
+   "attachments_claimed_but_missing": false,
+   "fraud_signals": [],
+   "confidence": 1,
+   "reasoning": "The email is a monthly vendor invoice from AirLink Fibernet for leased-line services, correctly routed to accounts payable (ap)."
+  }
+ },
+ "19": {
+  "now": "2026-11-02T18:30:00+05:30",
+  "from": "SparkleServ Accounts <accounts@sparkleserv.in>",
+  "as_alias": "sparkleserv",
+  "subject": "SparkleServ invoice SS/26-27/0611 for October 2026",
+  "classifier": {
+   "desk": "ap",
+   "intents": [
+    {
+     "class": "vendor_invoice",
+     "subclass": "housekeeping",
+     "summary": "SparkleServ sent invoice SS/26-27/0611 for October 2026 housekeeping services including festival deep-cleaning across all centres."
+    }
+   ],
+   "language": "en",
+   "sentiment": "neutral",
+   "churn_risk": false,
+   "identity_clues": {
+    "company": "SparkleServ Facility Services",
+    "member_id": "",
+    "invoice_numbers": [
+     "SS/26-27/0611"
+    ],
+    "gstin": "",
+    "cabin": "",
+    "centre": ""
+   },
+   "attachments_claimed_but_missing": false,
+   "fraud_signals": [],
+   "confidence": 1,
+   "reasoning": "The email is from an approved vendor (SparkleServ) submitting a monthly invoice with an attachment."
+  }
+ },
+ "20": {
+  "now": "2026-11-03T08:44:00+05:30",
+  "from": "BeanBox Invoices <invoices@beanbox.co.in>",
+  "as_alias": "beanbox",
+  "subject": "BeanBox Invoice BBX/1964",
+  "classifier": {
+   "desk": "ap",
+   "intents": [
+    {
+     "class": "vendor_invoice",
+     "subclass": "monthly_supply",
+     "summary": "BeanBox submitted invoice BBX/1964 for pantry supplies delivered in October."
+    }
+   ],
+   "language": "en",
+   "sentiment": "neutral",
+   "churn_risk": false,
+   "identity_clues": {
+    "company": "BeanBox Pantry Supplies",
+    "member_id": "",
+    "invoice_numbers": [
+     "BBX/1964"
+    ],
+    "gstin": "",
+    "cabin": "",
+    "centre": ""
+   },
+   "attachments_claimed_but_missing": false,
+   "fraud_signals": [],
+   "confidence": 1,
+   "reasoning": "The email is from an approved vendor submitting a monthly invoice with an attachment, which routes directly to the AP desk."
+  }
+ },
+ "21": {
+  "now": "2026-11-04T16:58:00+05:30",
+  "from": "SparkleServ Finance <accounts@sparkleserv-billing.in>",
+  "as_alias": "sparkleserv-fake",
+  "subject": "URGENT: Updated bank details for payment of SS/26-27/0611",
+  "classifier": {
+   "desk": "ap",
+   "intents": [
+    {
+     "class": "vendor_invoice",
+     "subclass": "payment",
+     "summary": "Email from SparkleServ requesting payment for invoice SS/26-27/0611 to be sent to a new bank account due to an audit."
+    }
+   ],
+   "language": "en",
+   "sentiment": "neutral",
+   "churn_risk": false,
+   "identity_clues": {
+    "company": "SparkleServ Facility Services",
+    "member_id": "",
+    "invoice_numbers": [
+     "SS/26-27/0611"
+    ],
+    "gstin": "",
+    "cabin": "",
+    "centre": ""
+   },
+   "attachments_claimed_but_missing": false,
+   "fraud_signals": [
+    "bank_change_request",
+    "payment_to_new_account",
+    "urgency_pressure",
+    "new_contact_number",
+    "lookalike_domain"
+   ],
+   "confidence": 1,
+   "reasoning": "The email requests a change of bank account details for an invoice payment from a lookalike domain under pressure, matching multiple vendor fraud signals."
+  }
+ },
+ "28": {
+  "now": "2026-11-03T11:05:00+05:30",
+  "from": "Guardian Shield Finance <finance@guardianshield.co.in>",
+  "as_alias": "guardianshield",
+  "subject": "Invoice GSS-2026-1121 - October 2026",
+  "classifier": {
+   "desk": "ap",
+   "intents": [
+    {
+     "class": "vendor_invoice",
+     "subclass": "supplier_invoice",
+     "summary": "Guardian Shield Security Services submitted invoice GSS-2026-1121 for October 2026 security services."
+    }
+   ],
+   "language": "en",
+   "sentiment": "neutral",
+   "churn_risk": false,
+   "identity_clues": {
+    "company": "Guardian Shield Security Services",
+    "member_id": "",
+    "invoice_numbers": [
+     "GSS-2026-1121"
+    ],
+    "gstin": "",
+    "cabin": "",
+    "centre": ""
+   },
+   "attachments_claimed_but_missing": false,
+   "fraud_signals": [],
+   "confidence": 1,
+   "reasoning": "The email is a monthly invoice submission from an approved vendor (Guardian Shield Security Services) and belongs to the accounts payable (ap) desk."
+  }
+ },
+ "33": {
+  "now": "2026-11-04T11:45:00+05:30",
+  "from": "Guardian Shield Finance <finance@guardianshield.co.in>",
+  "as_alias": "guardianshield",
+  "subject": "Payment status - GSS-2026-1093",
+  "classifier": {
+   "desk": "ap",
+   "intents": [
+    {
+     "class": "vendor_invoice",
+     "subclass": "payment_status",
+     "summary": "Vendor is asking for the payment status of their September invoice GSS-2026-1093."
+    }
+   ],
+   "language": "en",
+   "sentiment": "neutral",
+   "churn_risk": false,
+   "identity_clues": {
+    "company": "Guardian Shield Security Services",
+    "member_id": "",
+    "invoice_numbers": [
+     "GSS-2026-1093"
+    ],
+    "gstin": "",
+    "cabin": "",
+    "centre": ""
+   },
+   "lead": {
+    "team_size": 0,
+    "centres": [],
+    "near_metro": false,
+    "move_in": "",
+    "budget_inr": 0,
+    "budget_includes_gst": "",
+    "plan_interest": "",
+    "partner": "",
+    "incorporated": ""
+   },
+   "issue": {
+    "location": "",
+    "category": "",
+    "suggested_priority": "",
+    "since": "",
+    "repeat_claimed": false
+   },
+   "billing": {
+    "invoice_numbers": [],
+    "topic": "",
+    "new_gstin": "",
+    "tds_section": ""
+   },
+   "change": {
+    "type": "",
+    "seats_from": 0,
+    "seats_to": 0,
+    "effective": ""
+   },
+   "attachments_claimed_but_missing": false,
+   "fraud_signals": [],
+   "confidence": 1,
+   "reasoning": "The email is from an approved vendor (Guardian Shield Security Services) asking about the payment status of an invoice, which is handled by the accounts payable (ap) desk."
+  }
+ }
+}

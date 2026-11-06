@@ -1,0 +1,7 @@
+received_at,vendor_id,vendor_name,vendor_gstin,invoice_no,invoice_date,billing_period,po_number,taxable_amount,gst_amount,total_amount,validation_status,flags,approver,scheduled_payment_run,source,seed_id,sender,checks,pdf_link
+2026-10-04,V02,AirLink Fibernet Pvt. Ltd.,29AAGCA5520K1ZQ,ALF/2026/10/0871,2026-10-01,Oct 2026,LB-PO-2026-009,185000,33300,218300,Approved,,Lakshmi Narayan,2026-10-25,,,,,
+2026-10-06,V01,SparkleServ Facility Services Pvt. Ltd.,29AAKCS7731P1Z2,SS/26-27/0544,2026-10-05,Sep 2026,LB-PO-2026-014,362500,65250,427750,Approved,,Lakshmi Narayan; Meera Iyer,2026-10-25,,,,,
+2026-10-06,V03,Guardian Shield Security Services,29AAHFG3318R1Z9,GSS-2026-1093,2026-10-03,Sep 2026,LB-PO-2026-017,221400,39852,261252,Approved,,Lakshmi Narayan; Meera Iyer,2026-10-25,,,,,
+2026-10-08,V04,BeanBox Pantry Supplies LLP,29AARFB9042H1Z5,BBX/1907,2026-10-07,Sep 2026,LB-PO-2026-021,108640,19555,128195,Approved,,Lakshmi Narayan,2026-10-25,,,,,
+2026-10-09,V05,CoolBreeze HVAC Services,29ABEPC6614L1Z3,CB/AMC/Q3/26,2026-10-01,Oct-Dec 2026,LB-PO-2026-005,120000,21600,141600,Approved,,Lakshmi Narayan,2026-11-10,,,,,
+2026-10-09,V06,PrintHub Office Solutions,29AAJCP2287D1ZK,PH-26-10-233,2026-10-01,Oct 2026,LB-PO-2026-011,45000,8100,53100,Approved,,Lakshmi Narayan,2026-10-25,,,,,

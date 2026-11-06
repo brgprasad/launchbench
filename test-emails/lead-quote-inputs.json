@@ -1,0 +1,402 @@
+{
+ "01": {
+  "now": "2026-11-03T10:42:00+05:30",
+  "from": "Karan Bhatia <karan@orbitlylabs.io>",
+  "as_alias": "",
+  "subject": "Office for 14 people from January",
+  "classifier": {
+   "desk": "sales",
+   "intents": [
+    {
+     "class": "lead",
+     "subclass": "new",
+     "summary": "Inquiry about a private cabin for 14 people starting 1 January, near a metro station, with a budget around ₹1.5 lakh per month."
+    }
+   ],
+   "language": "en",
+   "sentiment": "positive",
+   "churn_risk": false,
+   "identity_clues": {
+    "company": "Orbitly Labs",
+    "member_id": "",
+    "invoice_numbers": [],
+    "gstin": "",
+    "cabin": "",
+    "centre": ""
+   },
+   "lead": {
+    "team_size": 14,
+    "centres": [
+     "IND",
+     "WHF"
+    ],
+    "near_metro": true,
+    "move_in": "2027-01-01",
+    "budget_inr": 150000,
+    "budget_includes_gst": "unclear",
+    "plan_interest": "private cabin",
+    "partner": "",
+    "incorporated": ""
+   },
+   "issue": {
+    "location": "",
+    "category": "",
+    "suggested_priority": "",
+    "since": "",
+    "repeat_claimed": false
+   },
+   "billing": {
+    "invoice_numbers": [],
+    "topic": "",
+    "new_gstin": "",
+    "tds_section": ""
+   },
+   "change": {
+    "type": "",
+    "seats_from": 0,
+    "seats_to": 0,
+    "effective": ""
+   },
+   "attachments_claimed_but_missing": false,
+   "fraud_signals": [],
+   "confidence": 1,
+   "reasoning": "The sender is a prospective customer inquiring about office space (a private cabin for 14 people) near a metro station starting January, which is a new sales lead."
+  }
+ },
+ "02": {
+  "now": "2026-11-03T16:05:00+05:30",
+  "from": "Ritika Sharma <ritika.sharma@finvoltpay.com>",
+  "as_alias": "",
+  "subject": "URGENT - need space for 40 people by mid-November",
+  "classifier": {
+   "desk": "sales",
+   "intents": [
+    {
+     "class": "lead",
+     "subclass": "new",
+     "summary": "Prospective tenant Finvolt Payments is seeking a private office for 40 people in Koramangala or HSR Layout starting November 17, 2026."
+    }
+   ],
+   "language": "en",
+   "sentiment": "neutral",
+   "churn_risk": false,
+   "identity_clues": {
+    "company": "Finvolt Payments",
+    "member_id": "",
+    "invoice_numbers": [],
+    "gstin": "",
+    "cabin": "",
+    "centre": ""
+   },
+   "lead": {
+    "team_size": 40,
+    "centres": [
+     "KOR",
+     "HSR"
+    ],
+    "near_metro": false,
+    "move_in": "2026-11-17",
+    "budget_inr": 0,
+    "budget_includes_gst": "unclear",
+    "plan_interest": "private cabin",
+    "partner": "",
+    "incorporated": ""
+   },
+   "attachments_claimed_but_missing": false,
+   "fraud_signals": [],
+   "confidence": 1,
+   "reasoning": "The email is a new sales inquiry from a prospective corporate tenant looking for office space for 40 people in Koramangala or HSR Layout."
+  }
+ },
+ "03": {
+  "now": "2026-11-02T21:17:00+05:30",
+  "from": "Neel Shah <neel@quietcraft.design>",
+  "as_alias": "",
+  "subject": "Exploring coworking options for next year",
+  "classifier": {
+   "desk": "sales",
+   "intents": [
+    {
+     "class": "lead",
+     "subclass": "new",
+     "summary": "Inquiry about coworking options, plans, and pricing for HSR or Koramangala for a team of 5-6 people looking to move next year (Q1 or Q2)."
+    }
+   ],
+   "language": "en",
+   "sentiment": "neutral",
+   "churn_risk": false,
+   "identity_clues": {
+    "company": "",
+    "member_id": "",
+    "invoice_numbers": [],
+    "gstin": "",
+    "cabin": "",
+    "centre": ""
+   },
+   "lead": {
+    "team_size": 5,
+    "centres": [
+     "HSR",
+     "KOR"
+    ],
+    "near_metro": false,
+    "move_in": "2027-01-01",
+    "budget_inr": 0,
+    "budget_includes_gst": "unclear",
+    "plan_interest": "",
+    "partner": "",
+    "incorporated": ""
+   },
+   "issue": {
+    "location": "",
+    "category": "",
+    "suggested_priority": "",
+    "since": "",
+    "repeat_claimed": false
+   },
+   "billing": {
+    "invoice_numbers": [],
+    "topic": "",
+    "new_gstin": "",
+    "tds_section": ""
+   },
+   "change": {
+    "type": "",
+    "seats_from": 0,
+    "seats_to": 0,
+    "effective": ""
+   },
+   "attachments_claimed_but_missing": false,
+   "fraud_signals": [],
+   "confidence": 0.98,
+   "reasoning": "The email is a new sales lead from a prospective member asking about pricing and plans for HSR or Koramangala.",
+   "guard_removed": [
+    "company: Quiet Craft"
+   ]
+  }
+ },
+ "04": {
+  "now": "2026-11-04T08:55:00+05:30",
+  "from": "Arjun K <arjun.k.freelance@gmail.com>",
+  "as_alias": "",
+  "subject": "day pass?",
+  "classifier": {
+   "desk": "sales",
+   "intents": [
+    {
+     "class": "lead",
+     "subclass": "day_pass",
+     "summary": "Freelance developer inquiring about day pass pricing and Sunday access near Indiranagar."
+    },
+    {
+     "class": "general_query",
+     "subclass": "access_hours",
+     "summary": "Inquires whether day pass users can access the centre on Sundays."
+    }
+   ],
+   "language": "en",
+   "sentiment": "neutral",
+   "churn_risk": false,
+   "identity_clues": {
+    "company": "",
+    "member_id": "",
+    "invoice_numbers": [],
+    "gstin": "",
+    "cabin": "",
+    "centre": "IND"
+   },
+   "lead": {
+    "team_size": 1,
+    "centres": [
+     "IND"
+    ],
+    "near_metro": true,
+    "move_in": "",
+    "budget_inr": 0,
+    "budget_includes_gst": "",
+    "plan_interest": "day pass",
+    "partner": "",
+    "incorporated": ""
+   },
+   "issue": {
+    "location": "",
+    "category": "",
+    "suggested_priority": "",
+    "since": "",
+    "repeat_claimed": false
+   },
+   "billing": {
+    "invoice_numbers": [],
+    "topic": "",
+    "new_gstin": "",
+    "tds_section": ""
+   },
+   "change": {
+    "type": "",
+    "seats_from": 0,
+    "seats_to": 0,
+    "effective": ""
+   },
+   "attachments_claimed_but_missing": false,
+   "fraud_signals": [],
+   "confidence": 0.95,
+   "reasoning": "The sender is asking about day pass pricing and Sunday access near Indiranagar, which represents a sales lead and a general query about facility access hours."
+  }
+ },
+ "05": {
+  "now": "2026-11-03T12:30:00+05:30",
+  "from": "Aisha Siddiqui <aisha@kalakaar.studio>",
+  "as_alias": "kalakaar",
+  "subject": "Moving from desks to a cabin?",
+  "classifier": {
+   "desk": "sales",
+   "intents": [
+    {
+     "class": "lead",
+     "subclass": "upsell",
+     "summary": "Existing member Kalakaar Studio wants to upgrade from open desks to a private cabin for 7 people at Indiranagar by December and asks about pricing."
+    },
+    {
+     "class": "change_request",
+     "subclass": "upgrade",
+     "summary": "Member is inquiring about upgrading their plan to a private cabin as their team grows to 7 people."
+    }
+   ],
+   "language": "en",
+   "sentiment": "neutral",
+   "churn_risk": false,
+   "identity_clues": {
+    "company": "Kalakaar Studio",
+    "member_id": "",
+    "invoice_numbers": [],
+    "gstin": "",
+    "cabin": "",
+    "centre": "IND"
+   },
+   "lead": {
+    "team_size": 7,
+    "centres": [
+     "IND"
+    ],
+    "near_metro": false,
+    "move_in": "2026-12-01",
+    "budget_inr": 0,
+    "budget_includes_gst": "unclear",
+    "plan_interest": "private cabin",
+    "partner": "",
+    "incorporated": ""
+   },
+   "issue": {
+    "location": "",
+    "category": "",
+    "suggested_priority": "",
+    "since": "",
+    "repeat_claimed": false
+   },
+   "billing": {
+    "invoice_numbers": [],
+    "topic": "",
+    "new_gstin": "",
+    "tds_section": ""
+   },
+   "change": {
+    "type": "upgrade",
+    "seats_from": 0,
+    "seats_to": 7,
+    "effective": "2026-12-01"
+   },
+   "attachments_claimed_but_missing": false,
+   "fraud_signals": [],
+   "confidence": 0.95,
+   "reasoning": "The email is from an existing member inquiring about upgrading from open desks to a private cabin for their growing team at the Indiranagar centre, which classifies primarily as a sales upsell lead and a change request."
+  }
+ },
+ "06": {
+  "now": "2026-11-04T11:10:00+05:30",
+  "from": "Rhea D'Cruz <rhea@tinkertrail.in>",
+  "as_alias": "",
+  "subject": "Founders Plan - Pragati Launch Accelerator cohort",
+  "classifier": {
+   "desk": "sales",
+   "intents": [
+    {
+     "class": "lead",
+     "subclass": "new",
+     "summary": "TinkerTrail wants pricing and deposit details for 2 dedicated desks at Indiranagar under the Founders Plan starting 16 November 2026, referencing Pragati Launch Accelerator."
+    }
+   ],
+   "language": "en",
+   "sentiment": "positive",
+   "churn_risk": false,
+   "identity_clues": {
+    "company": "TinkerTrail",
+    "member_id": "",
+    "invoice_numbers": [],
+    "gstin": "",
+    "cabin": "",
+    "centre": "IND"
+   },
+   "lead": {
+    "team_size": 2,
+    "centres": [
+     "IND"
+    ],
+    "near_metro": true,
+    "move_in": "2026-11-16",
+    "budget_inr": 0,
+    "budget_includes_gst": "unclear",
+    "plan_interest": "Founders Plan",
+    "partner": "Pragati Launch Accelerator",
+    "incorporated": "yes"
+   },
+   "attachments_claimed_but_missing": false,
+   "fraud_signals": [],
+   "confidence": 1,
+   "reasoning": "The email is an inquiry from a new startup wanting to rent 2 desks at Indiranagar under the Founders Plan with partner accelerator mention, which is classified as a new lead."
+  }
+ },
+ "23": {
+  "now": "2026-11-04T13:35:00+05:30",
+  "from": "Ishita Sen <ishita@lingolab.ai>",
+  "as_alias": "lingolab",
+  "subject": "Product launch event at Koramangala - 60 guests",
+  "classifier": {
+   "desk": "sales",
+   "intents": [
+    {
+     "class": "lead",
+     "subclass": "event_booking",
+     "summary": "Inquiry about hosting a product launch event for 60 guests at the Koramangala event space on 28 November 2026, including catering."
+    }
+   ],
+   "language": "en",
+   "sentiment": "positive",
+   "churn_risk": false,
+   "identity_clues": {
+    "company": "LingoLab AI",
+    "member_id": "",
+    "invoice_numbers": [],
+    "gstin": "",
+    "cabin": "",
+    "centre": "KOR"
+   },
+   "lead": {
+    "team_size": 60,
+    "centres": [
+     "KOR"
+    ],
+    "near_metro": false,
+    "move_in": "2026-11-28",
+    "budget_inr": 0,
+    "budget_includes_gst": "unclear",
+    "plan_interest": "event_space",
+    "partner": "",
+    "incorporated": ""
+   },
+   "attachments_claimed_but_missing": false,
+   "fraud_signals": [],
+   "confidence": 1,
+   "reasoning": "The email is an inquiry from a prospective client wanting to book the event hall at Koramangala for a product launch event, so it is classified as a sales lead for an event booking."
+  }
+ }
+}

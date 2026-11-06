@@ -1,0 +1,101 @@
+{% from "_icons.html" import icon, logo, mail %}
+<!doctype html>
+<html lang="en-IN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{{ c.brand.name }} · Coworking spaces in Bengaluru{% endblock %}</title>
+  <meta name="description" content="{% block description %}Flexible desks, private cabins and meeting rooms for startups across 5 centres in Bengaluru: Koramangala, Indiranagar, HSR Layout, Whitefield and Hebbal.{% endblock %}">
+  <meta name="robots" content="noindex, nofollow">
+  <meta property="og:title" content="{{ self.title() }}">
+  <meta property="og:description" content="{{ self.description() }}">
+  <meta property="og:image" content="/assets/img/hero-team.webp">
+  <meta name="theme-color" content="#FBF8F3">
+  <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/assets/site.css">
+  <script src="/assets/site.js" defer></script>
+</head>
+<body class="min-h-screen">
+  <a href="#main" class="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 btn-dark">Skip to content</a>
+
+  <div class="bg-ink text-white">
+    <div class="wrap flex items-center justify-center gap-2 py-2 text-center text-xs sm:text-sm">
+      <span class="hidden h-1.5 w-1.5 shrink-0 rounded-full bg-brand-400 sm:inline-block"></span>
+      <a href="{{ c.announcement.link }}" class="text-white/85 hover:text-white">{{ c.announcement.text }} <span class="font-semibold text-brand-300 underline-offset-4 hover:underline">See dates&nbsp;→</span></a>
+    </div>
+  </div>
+
+  <header data-header class="sticky top-0 z-40 border-b border-ink/5 bg-cream/85 backdrop-blur-md transition-shadow">
+    <div class="wrap flex h-16 items-center justify-between gap-6 lg:h-[4.5rem]">
+      <a href="/" aria-label="{{ c.brand.name }} home">{{ logo() }}</a>
+      <nav class="hidden items-center gap-1 lg:flex" aria-label="Main">
+        {% for n in c.nav %}
+        <a href="{{ n.href }}" class="rounded-full px-3 py-2 text-sm font-medium {{ 'text-ink bg-white shadow-soft' if page == n.href.strip('/') else 'text-ink-600 hover:text-ink' }}">{{ n.label }}</a>
+        {% endfor %}
+      </nav>
+      <div class="flex items-center gap-2">
+        <a href="/book-a-tour/" class="btn-primary hidden sm:inline-flex">Book a tour</a>
+        <button data-menu-button class="inline-flex h-10 w-10 items-center justify-center rounded-full text-ink ring-1 ring-ink/10 lg:hidden" aria-expanded="false" aria-label="Open menu">
+          <span data-icon-open>{{ icon('menu') }}</span><span data-icon-close class="hidden">{{ icon('x') }}</span>
+        </button>
+      </div>
+    </div>
+    <div data-menu class="hidden border-t border-ink/5 bg-cream lg:hidden">
+      <nav class="wrap flex flex-col py-3" aria-label="Mobile">
+        {% for n in c.nav %}<a href="{{ n.href }}" class="rounded-xl px-3 py-3 text-base font-medium text-ink hover:bg-white">{{ n.label }}</a>{% endfor %}
+        <a href="/book-a-tour/" class="btn-primary mt-3">Book a tour</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main">{% block main %}{% endblock %}</main>
+
+  <footer class="mt-24 bg-ink text-white/70">
+    <div class="wrap grid gap-12 py-16 lg:grid-cols-12">
+      <div class="lg:col-span-4">
+        {{ logo(dark=true) }}
+        <p class="mt-4 max-w-xs text-sm leading-relaxed">{{ c.brand.tagline }} Flexible workspace for startups and growing teams, across {{ centres|length }} centres in Bengaluru since {{ c.brand.founded }}.</p>
+        <a href="/book-a-tour/" class="btn-primary mt-6">Book a tour {{ icon('arrow', 'h-4 w-4') }}</a>
+      </div>
+      <div class="grid grid-cols-2 gap-8 sm:grid-cols-3 lg:col-span-8">
+        <div>
+          <h3 class="text-sm font-semibold text-white">Workspaces</h3>
+          <ul class="mt-4 space-y-3 text-sm">
+            <li><a class="hover:text-white" href="/workspaces/#hot-desk">Hot desks</a></li>
+            <li><a class="hover:text-white" href="/workspaces/#dedicated-desk">Dedicated desks</a></li>
+            <li><a class="hover:text-white" href="/workspaces/#private-cabin">Private cabins</a></li>
+            <li><a class="hover:text-white" href="/startups/">Founders Plan</a></li>
+            <li><a class="hover:text-white" href="/workspaces/#virtual-office">Virtual office</a></li>
+            <li><a class="hover:text-white" href="/events/">Meeting rooms &amp; events</a></li>
+          </ul>
+        </div>
+        <div>
+          <h3 class="text-sm font-semibold text-white">Locations</h3>
+          <ul class="mt-4 space-y-3 text-sm">
+            {% for ctr in centres %}<li><a class="hover:text-white" href="/locations/{{ ctr.slug }}/">{{ ctr.name }}</a></li>{% endfor %}
+          </ul>
+        </div>
+        <div>
+          <h3 class="text-sm font-semibold text-white">Company</h3>
+          <ul class="mt-4 space-y-3 text-sm">
+            <li><a class="hover:text-white" href="/pricing/">Pricing</a></li>
+            <li><a class="hover:text-white" href="/startups/">Startup programme</a></li>
+            <li><a class="hover:text-white" href="/faq/">FAQ</a></li>
+            <li><a class="hover:text-white" href="/book-a-tour/">Contact us</a></li>
+            <li><a class="hover:text-white" href="/legal/">Privacy &amp; terms</a></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="border-t border-white/10">
+      <div class="wrap flex flex-col gap-3 py-6 text-xs text-white/50 sm:flex-row sm:items-start sm:justify-between">
+        <p>© {{ year }} {{ c.brand.legal }} · GSTIN {{ c.brand.gstin }}<br>Registered office: {{ c.brand.registered_office }}<br>Questions? {{ mail(c.brand.email, "Email us", "underline hover:text-white") }} or <a class="underline hover:text-white" href="/book-a-tour/">book a tour</a>.</p>
+        <p class="max-w-sm sm:text-right">{{ c.brand.disclaimer }}</p>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>

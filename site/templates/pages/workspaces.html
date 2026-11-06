@@ -1,0 +1,183 @@
+{% extends "base.html" %}
+{% from "_icons.html" import icon, img %}
+{% from "_partials.html" import page_hero, section_head, cta_band %}
+{% block title %}Workspaces: hot desks, dedicated desks and private cabins · {{ c.brand.name }}{% endblock %}
+{% block description %}Hot desks from {{ from_hot|inr }}, dedicated desks with 24×7 access, private cabins for 4 to 30 people, day passes and virtual offices across 5 Bengaluru centres.{% endblock %}
+{% block main %}
+
+{{ page_hero('Workspaces',
+  'Pick the desk that fits <span class="text-brand-500">this quarter.</span>',
+  'Start with a hot desk, move to your own desk when the team settles, and take a cabin when you need a door that closes. Moving up never costs a fee, and you keep the same address.',
+  image='centre-ind', alt='The open floor at a Launchbench centre',
+  primary=('Book a tour', '/book-a-tour/'), secondary=('See all prices', '/pricing/')) }}
+
+{# ---------- Jump links ---------- #}
+<nav class="wrap" aria-label="Plans on this page">
+  <ul class="flex flex-wrap gap-2">
+    {% for label, href in [('Hot desk', '#hot-desk'), ('Dedicated desk', '#dedicated-desk'), ('Private cabin', '#private-cabin'), ('Founders Plan', '#founders-plan'), ('Day pass', '#day-pass'), ('Virtual office', '#virtual-office'), ('Compare plans', '#compare')] %}
+    <li><a href="{{ href }}" class="inline-flex rounded-full bg-white px-4 py-2 text-sm font-medium text-ink-600 shadow-soft ring-1 ring-ink/5 hover:text-ink">{{ label }}</a></li>
+    {% endfor %}
+  </ul>
+</nav>
+
+{# ---------- The three core plans ---------- #}
+{% set core = [
+  {'id': 'hot-desk', 'image': 'space-hot', 'title': 'Hot desk', 'price': from_hot, 'max': centres|map(attribute='price_hot')|max,
+   'lede': "Any open seat in the shared floor, month-to-month. Ideal when you're one or two people, or the team is in the office a few days a week.",
+   'points': ['Any free seat in the open area, 8 am to 9 pm, Monday to Saturday',
+              'No lock-in. Stay month-to-month for as long as you like',
+              'Add 24×7 card access for ' ~ prices['ACCESS247-HOT']|inr ~ ' a month',
+              '2 meeting-room credits per seat, every month',
+              'Personal lockers from ' ~ prices['LOCKER-ALL']|inr ~ ' a month (clear-desk policy at night)']},
+  {'id': 'dedicated-desk', 'image': 'space-dedicated', 'title': 'Dedicated desk', 'price': from_ded, 'max': centres|map(attribute='price_ded')|max,
+   'lede': 'Your own fixed desk and pedestal, set up the way you like it and waiting for you at 2 am when the release goes out.',
+   'points': ['Your own desk with a lockable pedestal',
+              '24×7 access with your personal card',
+              '4 meeting-room credits per seat, every month',
+              '100 free printed pages per seat, every month',
+              'Minimum 3-month lock-in, then month-to-month']},
+  {'id': 'private-cabin', 'image': 'space-cabin', 'title': 'Private cabin', 'price': from_cab, 'max': centres|map(attribute='price_cab')|max,
+   'lede': 'A lockable room for your team only, from 4 to 30 seats. Put your posters up, wheel in a whiteboard and make it yours.',
+   'points': ['Cabins for 4, 6, 8, 10, 12, 16, 20 and 30 people',
+              'Billed on the cabin\'s full capacity, so a team of 14 takes a 16-seat cabin',
+              '24×7 access, and a free private VLAN for your network',
+              '4 meeting-room credits per seat of capacity, every month',
+              'Minimum 6-month lock-in. Teams of 5 or more get a free 1-day trial first']},
+] %}
+
+<div class="wrap mt-16 space-y-24 lg:mt-24 lg:space-y-32">
+  {% for p in core %}
+  <section id="{{ p.id }}" class="grid scroll-mt-28 items-center gap-10 lg:grid-cols-2 lg:gap-16">
+    <div class="{{ 'lg:order-2' if loop.index is even else '' }}">
+      <div class="relative">
+        {{ img(p.image, p.title ~ ' at Launchbench', 'aspect-[4/3] w-full rounded-[2rem] object-cover shadow-lift', '(min-width: 1024px) 580px, 100vw') }}
+        <div class="card absolute -bottom-6 {{ 'right-4 sm:-right-4' if loop.index is odd else 'left-4 sm:-left-4' }} px-5 py-4">
+          <p class="text-xs text-ink-400">From</p>
+          <p class="font-display text-2xl font-extrabold">{{ p.price|inr }}<span class="text-sm font-medium text-ink-400"> / seat / month</span></p>
+        </div>
+      </div>
+    </div>
+    <div>
+      <p class="text-sm font-semibold uppercase tracking-wider text-brand-600">0{{ loop.index }}</p>
+      <h2 class="section-title mt-2">{{ p.title }}</h2>
+      <p class="section-lede">{{ p.lede }}</p>
+      <ul class="mt-8 space-y-3">
+        {% for pt in p.points %}
+        <li class="flex gap-3 text-ink-600"><span class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-leaf-100 text-leaf-600">{{ icon('check', 'h-3.5 w-3.5') }}</span><span>{{ pt }}</span></li>
+        {% endfor %}
+      </ul>
+      <p class="mt-8 text-sm text-ink-400">{{ p.price|inr }} to {{ p.max|inr }} per seat per month, depending on the centre. Prices exclude 18% GST.</p>
+      <div class="mt-6 flex flex-wrap gap-3">
+        <a href="/book-a-tour/" class="btn-dark">Book a tour</a>
+        <a href="/pricing/" class="btn-ghost">Prices by centre</a>
+      </div>
+    </div>
+  </section>
+  {% endfor %}
+</div>
+
+{# ---------- Founders Plan teaser ---------- #}
+<section id="founders-plan" class="wrap scroll-mt-28 pt-28">
+  <div class="relative overflow-hidden rounded-[2.5rem] bg-ink p-8 text-white sm:p-12 lg:p-14">
+    <div class="pointer-events-none absolute -right-20 -top-28 h-80 w-80 rounded-full bg-brand-500/30 blur-3xl"></div>
+    <div class="relative grid items-center gap-10 lg:grid-cols-12">
+      <div class="lg:col-span-7">
+        <span class="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-brand-300">{{ icon('rocket', 'h-3.5 w-3.5') }} Founders Plan</span>
+        <h2 class="mt-5 font-display text-3xl font-extrabold leading-tight sm:text-4xl">Dedicated desks for teams of 1 to 3, at {{ from_fnd|inr }} a seat.</h2>
+        <p class="mt-4 max-w-xl text-white/75">For companies incorporated less than 3 years ago, or DPIIT-recognised. A 3-month lock-in, 24×7 access and 10 meeting-room credits a month for the team. {% set fnd = centres|selectattr('price_fnd')|map(attribute='name')|list %}Available at {{ fnd[:-1]|join(', ') }} and {{ fnd[-1] }}.</p>
+      </div>
+      <div class="lg:col-span-5 lg:text-right">
+        <a href="/startups/" class="btn-primary px-6 py-3.5 text-base">See the startup programme {{ icon('arrow', 'h-4 w-4') }}</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+{# ---------- Day pass & virtual office ---------- #}
+<section class="wrap pt-28">
+  {{ section_head('Not ready for a desk?', 'Drop in for a day, or put your registered office in a proper building while you work from wherever you are.') }}
+  <div class="mt-12 grid items-start gap-6 lg:grid-cols-2">
+    <div id="day-pass" class="card scroll-mt-28 overflow-hidden">
+      {{ img('lounge', 'The lounge at Launchbench', 'aspect-[16/7] w-full object-cover', '(min-width: 1024px) 600px, 100vw') }}
+      <div class="p-8">
+        <div class="flex items-baseline justify-between gap-4">
+          <h3 class="text-2xl font-bold">Day pass</h3>
+          <p><span class="font-display text-2xl font-extrabold">{{ prices['DAY-ALL']|inr }}</span> <span class="text-sm text-ink-400">/ person / day</span></p>
+        </div>
+        <p class="mt-3 text-ink-500">Walk into any of our five centres and take a hot desk from 8 am to 9 pm, Monday to Saturday. Includes up to 1 hour in a 4-seater meeting room, subject to availability.</p>
+        <p class="mt-4 text-sm text-ink-400">Members can book a guest day pass for a visitor at {{ prices['GUEST-ALL']|inr }}, billed on their next invoice.</p>
+      </div>
+    </div>
+    <div id="virtual-office" class="card scroll-mt-28 overflow-hidden">
+      {{ img('city-street', 'A street in Bengaluru', 'aspect-[16/7] w-full object-cover', '(min-width: 1024px) 600px, 100vw') }}
+      <div class="p-8">
+        <h3 class="text-2xl font-bold">Virtual office</h3>
+        <p class="mt-3 text-ink-500">Use a Launchbench centre as your business address. We receive your mail and couriers, scan them on request and forward them once a fortnight. Every plan includes 2 day passes a month.</p>
+        <div class="mt-6 grid gap-4 sm:grid-cols-2">
+          <div class="rounded-2xl bg-cream-100 p-5">
+            <p class="font-semibold">Basic</p>
+            <p class="mt-1"><span class="font-display text-xl font-extrabold">{{ prices['VO-BASIC']|inr }}</span> <span class="text-sm text-ink-400">/ month</span></p>
+            <p class="mt-2 text-sm text-ink-500">Business address and mail handling.</p>
+          </div>
+          <div class="rounded-2xl bg-cream-100 p-5">
+            <p class="font-semibold">GST Registration</p>
+            <p class="mt-1"><span class="font-display text-xl font-extrabold">{{ prices['VO-GST']|inr }}</span> <span class="text-sm text-ink-400">/ month</span></p>
+            <p class="mt-2 text-sm text-ink-500">Basic, plus the NOC, utility bill and rent agreement for GST and MCA registration.</p>
+          </div>
+        </div>
+        <p class="mt-4 text-sm text-ink-400">Billed annually in advance: {{ (prices['VO-BASIC'] * 12)|inr }} or {{ (prices['VO-GST'] * 12)|inr }} a year.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+{# ---------- Comparison ---------- #}
+<section id="compare" class="wrap scroll-mt-28 pt-28">
+  {{ section_head('Compare plans at a glance') }}
+  {% set rows = [
+    ('Price from, per seat per month', [from_hot|inr, from_ded|inr, from_cab|inr, from_fnd|inr]),
+    ('Access', ['8 am–9 pm, Mon–Sat', '24×7', '24×7', '24×7']),
+    ('Minimum lock-in', ['None', '3 months', '6 months', '3 months']),
+    ('Notice to leave', ['1 month', '1 month', '2 months', '1 month']),
+    ('Security deposit', ['1 month', '2 months', '2 months', '1 month']),
+    ('Meeting-room credits', ['2 per seat', '4 per seat', '4 per seat', '10 per team']),
+    ('Free printing', ['—', '100 pages per seat', '100 pages per seat', '100 pages per seat']),
+    ('Team size', ['Any', 'Any', '4 to 30 per cabin', '1 to 3']),
+  ] %}
+  <div class="card mt-10 overflow-x-auto">
+    <table class="w-full min-w-[44rem] text-left text-sm">
+      <thead>
+        <tr class="border-b border-ink/5">
+          <th class="p-5 font-medium text-ink-400"><span class="sr-only">Feature</span></th>
+          {% for h in ['Hot desk', 'Dedicated desk', 'Private cabin', 'Founders Plan'] %}<th class="p-5 font-display text-base font-bold text-ink">{{ h }}</th>{% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for label, vals in rows %}
+        <tr class="border-b border-ink/5 last:border-0 {{ 'bg-cream/50' if loop.index is odd else '' }}">
+          <th scope="row" class="p-5 font-medium text-ink-500">{{ label }}</th>
+          {% for v in vals %}<td class="p-5 {{ 'font-display text-lg font-bold text-ink' if label.startswith('Price') else 'text-ink-700' }}">{{ v }}</td>{% endfor %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p class="mt-4 text-sm text-ink-400">Deposits are refundable, interest-free and charged without GST. Lock-ins of 6 or 12 months earn 5% or 10% off seat fees.</p>
+</section>
+
+{# ---------- Included everywhere ---------- #}
+<section class="wrap pt-28">
+  {{ section_head('Included in every plan', link=('See our locations', '/locations/')) }}
+  <div class="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+    {% for f in c.features %}
+    <div class="card p-6">
+      <div class="flex h-11 w-11 items-center justify-center rounded-2xl bg-brand-50 text-brand-600 ring-1 ring-brand-100">{{ icon(f.icon) }}</div>
+      <h3 class="mt-5 font-semibold">{{ f.title }}</h3>
+      <p class="mt-1 text-sm leading-relaxed text-ink-500">{{ f.text }}</p>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+
+{{ cta_band() }}
+{% endblock %}

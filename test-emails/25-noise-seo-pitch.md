@@ -6,6 +6,7 @@ to: teamlaunchbench@gmail.com
 subject: Get Launchbench to #1 on Google in 30 days 🚀
 attachments: []
 expected_class: noise
+expected_reply: none  # a cold sales pitch: no reply
 expected_action:
   - Classify as an unsolicited sales pitch.
   - Archive or label it. Do not reply, and do not create a lead.

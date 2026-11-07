@@ -6,10 +6,10 @@ to: teamlaunchbench@gmail.com
 subject: Cycling to Whitefield
 attachments: []
 expected_class: general_query
-expected_decision: approval
+expected_decision: staff answer
 expected_action:
   - Identify the member: M016, Dhoop Solar, dedicated desks D31-D38 at Whitefield.
-  - The knowledge base covers two-wheeler (motorbike and scooter) parking at ₹800 a month, but nothing about bicycles or keeping one indoors. Reply that the team will confirm, and send the draft for approval, not automatically.
+  - The knowledge base covers two-wheeler (motorbike and scooter) parking at ₹800 a month, but nothing about bicycles or keeping one indoors. Reply at once that the team will confirm (nothing invented), and ask a person to write the answer; no approval of the holding reply.
   - Must not present the ₹800 two-wheeler parking as the bicycle answer, and must not invent a bike rack or permission to keep a cycle by the desks.
   - Known gap, kept on purpose: a near miss next to a covered topic.
 kb_refs: []

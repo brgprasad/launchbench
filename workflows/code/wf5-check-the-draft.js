@@ -12,6 +12,7 @@
 //   data:  { pricing: {sku: value}, availability: [rows], invoices: [rows] }
 // checkReply(text, allowedText, mustMention) -> { ok, amounts, unknown, missing }
 // demoLine(member) -> "Demo: you're writing as ..." (code-written, never the AI)
+// routeQuery({...}) -> { route: auto|answer|approve, ack: draft|template } for a question's reply
 
 const CENTRE_NAMES = { KOR: 'Koramangala', IND: 'Indiranagar', HSR: 'HSR Layout', WHF: 'Whitefield', HEB: 'Hebbal (Manyata)' };
 const STAFF_EMAIL = {
@@ -83,6 +84,37 @@ function checkGrounding(quotes, kbText, questionText) {
     : { ok: false, reason: 'the quoted knowledge-base sentences share no subject with the question', quotes: qs.length };
 }
 
+// A draft that only says the team will confirm, with no answer of its own: every
+// sentence between the greeting and the sign-off thanks the sender or defers, and
+// there are no numbers or amounts. Such a reply can go out at once; a sentence
+// that states anything else could be an unchecked claim, so it can't.
+function isHoldingOnly(text) {
+  const paras = String(text || '').trim().split(/\n\s*\n/).map(p => p.replace(/\s+/g, ' ').trim()).filter(Boolean);
+  const body = paras.filter((p, i) => !(i === 0 && /^(hi|hello|dear)\b[^.!?]*$/i.test(p)) && !(i >= paras.length - 2 && i > 0 && !/[.!?]/.test(p))).join(' ');
+  if (!body || body.length > 500 || /[₹\d]/.test(body)) return false;
+  const sentences = body.split(/(?<=[.!?])\s+/).filter(Boolean);
+  const DEFER = /\b(thanks?|thank you|confirm|get back|check|look into|find out|reply|let you know|shortly|soon|reach(ing)? out|writing|glad|happy to help)\b/i;
+  return sentences.length <= 4 && sentences.every(s => DEFER.test(s)) && /\b(confirm|get back|check|look into|find out|let you know)\b/i.test(body);
+}
+
+// What happens to a question's reply (code decides; the AI's opinion is one input).
+//   route 'auto'    : the draft is the answer, checked, and is sent now.
+//   route 'answer'  : a person has to answer (the AI says the knowledge base doesn't
+//                     cover it, or the draft failed). The sender is told at once that
+//                     the team will confirm; the person then writes the answer. One human step.
+//   route 'approve' : the draft answers but isn't trusted. An acknowledgement goes at
+//                     once; the draft waits for approval.
+//   ack 'draft'     : the AI's reply is safe to send as that first reply (its quotes
+//                     check out, or it only says the team will confirm);
+//   ack 'template'  : a code-written acknowledgement is sent instead.
+function routeQuery({ draft, needsStaff, confidence, amountsOk, grounding, quoteCount }) {
+  if (!String(draft || '').trim()) return { route: 'answer', ack: 'template' };
+  const holding = quoteCount === 0 && isHoldingOnly(draft);
+  if (needsStaff || holding) return { route: 'answer', ack: amountsOk && (grounding.ok || holding) ? 'draft' : 'template' };
+  if (amountsOk && grounding.ok && confidence >= 0.8) return { route: 'auto', ack: '' };
+  return { route: 'approve', ack: 'template' };
+}
+
 function demoLine(member) {
   if (!member) return '';
   const where = [CENTRE_NAMES[member.centre] || member.centre, member.space && member.space !== 'Open area' && member.space !== 'Virtual' ? member.space : ''].filter(Boolean).join(', ');
@@ -148,7 +180,7 @@ let grounding = null;
 if (a.path === 'change') whyNot.push('membership changes always need the account manager\'s approval');
 else {
   if (!draft) whyNot.push('the AI draft failed');
-  if (out && out.needs_staff) whyNot.push('the AI asked for a person to check: ' + (out.staff_reason || 'no reason given'));
+  if (out && out.needs_staff) whyNot.push('the AI asked for a person to check: ' + String(out.staff_reason || 'no reason given').replace(/[.\s]+$/, ''));
   if (out && conf < 0.8) whyNot.push(`the AI's confidence is ${conf} (needs 0.8)`);
   if (chk.unknown.length) whyNot.push('an amount is not in the price list');
   if (draft) {
@@ -156,7 +188,11 @@ else {
     if (!grounding.ok) whyNot.push(grounding.reason);
   }
 }
-const autoSend = a.path === 'query' && whyNot.length === 0 && chk.ok;
+// Every sender hears back at once. Code picks what they get and what a person does next.
+const r = a.path === 'change' ? { route: 'approve', ack: 'template' }
+  : routeQuery({ draft, needsStaff: Boolean(out && out.needs_staff), confidence: conf, amountsOk: chk.ok,
+      grounding: grounding || { ok: false }, quoteCount: grounding ? grounding.quotes : 0 });
+const autoSend = r.route === 'auto';
 const source = a.path === 'change' ? 'the computed facts' : 'the price list and knowledge base';
 const checkText = !draft ? 'The AI draft failed, so a holding reply is shown instead.'
   : [chk.unknown.length ? `CHECK BEFORE APPROVING: ${chk.unknown.join(', ')} ${chk.unknown.length > 1 ? 'are' : 'is'} not in ${source}.` : '',
@@ -167,7 +203,17 @@ const groundingText = grounding && !grounding.ok ? ` Not sent automatically: ${g
 const fallback = a.path === 'change'
   ? `Hi ${a.contact_first},\n\nThanks for your email. I have your request and will get back to you shortly with the details.\n\n${ownerFirst}\nTeam Launchbench`
   : `Hi ${a.contact_first},\n\nThanks for your email. Our team will get back to you shortly.\n\nLaunchbench Community Team`;
-const body = (a.demo_line ? a.demo_line + '\n\n' : '') + (draft || fallback);
+const demo = a.demo_line ? a.demo_line + '\n\n' : '';
+const body = demo + (draft || fallback);
+// The first reply, sent at once when a person still has to act. Code writes the
+// acknowledgement; the AI's draft is used only when it is safe as it stands.
+const ackTemplate = a.path === 'change'
+  ? `Hi ${a.contact_first},\n\nThanks for your email. ${ownerFirst} from our team has your request and will confirm the details${p && p.reply_due ? ' by ' + nice(p.reply_due) : ' shortly'}.\n\nTeam Launchbench`
+  : `Hi ${a.contact_first},\n\nThanks for your question. ${ownerFirst} from our team will look into it and get back to you shortly.\n\nLaunchbench Community Team`;
+const ackBody = autoSend ? '' : demo + (r.ack === 'draft' ? draft : ackTemplate);
+// A person's typed answer is sent between these.
+const answerOpen = `${demo}Hi ${a.contact_first},\n\n`;
+const answerClose = `\n\n${ownerFirst}\nTeam Launchbench`;
 
 // ---- ids, labels ----
 // Test-runner seeds repeat, so their id also carries this run's execution number.
@@ -180,6 +226,13 @@ const received = String(a.now || '').replace('T', ' ').slice(0, 16);
 // ---- approval email ----
 const box = 'white-space:pre-wrap;text-align:left;padding:10px 14px;border-radius:6px;';
 const okColour = chk.ok && draft ? '#E3F1E7' : '#FDECEA';
+const answering = r.route === 'answer';
+// A holding reply needs no knowledge-base quote, so that check isn't a reason here.
+const why = answering && r.ack === 'draft' && grounding && !grounding.ok ? whyNot.filter(w => w !== grounding.reason) : whyNot;
+const ackNote = answering
+  ? (r.ack === 'draft' ? 'Sent to them straight away, because it only says the team will confirm' + (grounding && grounding.ok ? ' and its quoted knowledge-base sentences check out' : '') + '.'
+    : (draft ? 'The AI\'s draft was not safe to send as it stood' : 'The AI draft failed') + ', so a standard acknowledgement went to them straight away.')
+  : 'Sent to them straight away, so they know a reply is coming.';
 const rows = [
   ['From', `${esc(a.from_name)} &lt;${esc(a.reply_to)}&gt;`],
   ['Member', m ? `${esc(m.company)} (${m.member_id}): ${esc(m.plan)}, ${m.seats} seats, ${esc(CENTRE_NAMES[m.centre] || m.centre)}${m.space && m.space !== 'Open area' ? ', ' + esc(m.space) : ''}` +
@@ -197,18 +250,24 @@ if (a.path === 'change') {
 }
 const list = xs => `<ul>${xs.map(x => `<li>${esc(x)}</li>`).join('')}</ul>`;
 const html = `<div style="text-align:left">`
-  + `<p style="padding:8px 12px;border-radius:6px;background:${okColour}">${esc(checkText)}</p>`
+  + (answering ? '' : `<p style="padding:8px 12px;border-radius:6px;background:${okColour}">${esc(checkText)}</p>`)
   + (p && p.flags && p.flags.length ? `<p style="padding:8px 12px;border-radius:6px;background:#FFF4D6">${esc(p.flags.join('. '))}.</p>` : '')
   + `<p>${a.path === 'change' ? `A membership change for <b>${esc(a.owner)}</b>${p && p.fyi.length ? ` (FYI ${esc(p.fyi.join(', '))}: ${esc(p.fyi_reason)})` : ''}. Every date and fee was computed from the membership terms; Gemini only wrote the wording.`
-      : `A question for <b>${esc(a.owner)}</b> to check, because ${esc(whyNot.join('; ') || 'a check failed')}.`}</p>`
+      : answering ? `A question for <b>${esc(a.owner)}</b> to answer, because ${esc(why.join('; ') || 'the AI could not answer it')}.`
+      : `A question for <b>${esc(a.owner)}</b> to check, because ${esc(why.join('; ') || 'a check failed')}.`}</p>`
   + `<table cellpadding="4" style="border-collapse:collapse;text-align:left">${rows.map(r => `<tr><td style="color:#666;vertical-align:top">${r[0]}</td><td>${r[1]}</td></tr>`).join('')}</table>`
   + (p && p.internal_facts && p.internal_facts.length ? `<p><b>For you only</b> (not in the reply)</p>${list(p.internal_facts)}` : '')
   + (p && p.fee_basis ? `<p style="color:#666">Fee basis: ${esc(p.fee_basis)}. Indicative; confirm before quoting.</p>` : '')
   + `<p><b>Their email</b>, received ${esc(received)} IST:</p>`
   + `<div style="${box}background:#F6F1E9"><b>Subject:</b> ${esc(a.subject || '(none)')}\n\n${esc(a.body || '')}</div>`
   + (p ? `<p><b>The reply covers</b></p>${list(p.customer_facts)}` : '')
-  + `<p><b>Draft reply</b> to ${esc(a.reply_to)} (sent when you approve):</p>`
-  + `<div style="${box}border-left:3px solid #F26B1D;border-radius:0">${esc(body)}</div>`
+  + `<p><b>Already sent</b> to ${esc(a.reply_to)}. ${esc(ackNote)}</p>`
+  + `<div style="${box}background:#EEF1F5">${esc(ackBody)}</div>`
+  + (answering
+    ? `<p><b>Your answer:</b> press the button below and type it. It is sent as a reply in their thread, like this:</p>`
+      + `<div style="${box}border-left:3px solid #F26B1D;border-radius:0">${esc(answerOpen)}<i>[your answer]</i>${esc(answerClose)}</div>`
+    : `<p><b>Draft reply</b> to ${esc(a.reply_to)} (sent when you approve):</p>`
+      + `<div style="${box}border-left:3px solid #F26B1D;border-radius:0">${esc(body)}</div>`)
   + `</div>`;
 
 // ---- staff notes (no approval needed) ----
@@ -221,7 +280,7 @@ if (p && p.fyi_emails && p.fyi_emails.length) {
 if (a.path === 'query' && m && out && out.upsell_hint) {
   notes.push({ to: STAFF_EMAIL[m.account_manager] || STAFF_EMAIL[HEAD_OF_SALES], subject: `Upsell idea: ${m.company}`,
     html: `<div style="text-align:left"><p>${esc(out.upsell_hint)}</p><p>${esc(m.company)} (${m.member_id}) has ${m.seats} × ${esc(m.plan)} at ${esc(CENTRE_NAMES[m.centre] || m.centre)}. `
-      + `${autoSend ? 'Their question was answered automatically.' : 'Their question is waiting for approval.'}</p>`
+      + `${autoSend ? 'Their question was answered automatically.' : answering ? 'Their question is waiting for an answer from the team.' : 'Their question is waiting for approval.'}</p>`
       + `<p><b>Their email:</b></p><div style="${box}background:#F6F1E9">${esc(a.body)}</div></div>` });
 }
 
@@ -231,11 +290,14 @@ return [{ json: {
   summary: a.path === 'change' ? (p && p.summary) || '' : a.intents.filter(i => i.class === 'general_query').map(i => i.summary).join(' | '),
   effective_date: p ? p.exit_date || p.effective || '' : '', new_monthly_inr: p && p.new_monthly ? p.new_monthly : '',
   fee_inr: p && p.fee_inr ? p.fee_inr : '', confidence: out ? conf : '',
-  decision: autoSend ? 'auto-send' : 'approval', status: autoSend ? 'Sending automatically' : 'Awaiting approval',
+  decision: autoSend ? 'auto-send' : answering ? 'staff answer' : 'approval',
+  status: autoSend ? 'Sending automatically' : answering ? 'Awaiting answer' : 'Awaiting approval',
   owner: a.owner, draft_check: checkText + groundingText, draft_reply: body,
   // fields for the email nodes
-  auto_send: autoSend, message_id: a.message_id, reply_to: a.reply_to, reply_subject: a.reply_subject, reply_body: body,
+  auto_send: autoSend, route: r.route, ack_body: ackBody, answer_open: answerOpen, answer_close: answerClose, contact_first: a.contact_first,
+  message_id: a.message_id, reply_to: a.reply_to, reply_subject: a.reply_subject, reply_body: body,
   owner_email: a.owner_email,
-  approval_subject: `${chk.ok && draft ? '' : '[CHECK] '}Approve reply: ${who} (${kind}${p && (p.exit_date || p.effective) ? ', ' + nice(p.exit_date || p.effective) : ''})`,
+  approval_subject: answering ? `Answer needed: ${who} (question)`
+    : `${chk.ok && draft ? '' : '[CHECK] '}Approve reply: ${who} (${kind}${p && (p.exit_date || p.effective) ? ', ' + nice(p.exit_date || p.effective) : ''})`,
   approval_html: html, staff_notes: notes,
 } }];

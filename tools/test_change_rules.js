@@ -14,6 +14,8 @@ const planChange = vm.runInContext('planChange', ctx);
 const checkReply = vm.runInContext('checkReply', ctx);
 const demoLine = vm.runInContext('demoLine', ctx);
 const checkGrounding = vm.runInContext('checkGrounding', ctx);
+const routeQuery = vm.runInContext('routeQuery', ctx);
+const isHoldingOnly = vm.runInContext('isHoldingOnly', ctx);
 
 function csv(name) {
   const text = fs.readFileSync(path.join(ROOT, 'data', name), 'utf8').replace(/\r/g, '');
@@ -108,6 +110,26 @@ const g12 = checkGrounding(['Quiet hours in the open area run 9 am to 7 pm.'], K
 check('grounding', !g12.ok, 'a changed time is caught');
 const g6 = checkGrounding('Printing is free', KB, 'printing');
 check('grounding', !g6.ok, 'a non-array or too-short quote is not grounding');
+
+// Routing a question's reply: every sender gets an immediate reply; a person
+// either answers (once) or approves an untrusted draft.
+const HOLD = 'Hi Guru,\n\nOur team will confirm whether you can bring your baby to the office tomorrow, and get back to you shortly.\n\nLaunchbench Community Team';
+const ok = { ok: true }, bad = { ok: false };
+const rq = o => routeQuery(Object.assign({ draft: 'Hi,\n\nQuiet hours run 9 am to 6 pm.\n\nTeam', needsStaff: false, confidence: 0.9, amountsOk: true, grounding: ok, quoteCount: 1 }, o));
+const same = (r, route, ack) => r.route === route && r.ack === ack;
+check('route', same(rq({}), 'auto', ''), 'a grounded, confident answer is sent automatically');
+check('route', same(rq({ draft: HOLD, needsStaff: true, grounding: bad, quoteCount: 0 }), 'answer', 'draft'), 'an uncovered question: the "team will confirm" reply goes now, a person answers');
+check('route', same(rq({ draft: HOLD, needsStaff: false, grounding: bad, quoteCount: 0 }), 'answer', 'draft'), 'a holding-only reply goes now even if the AI forgot needs_staff');
+check('route', same(rq({ draft: 'Hi Guru,\n\nBabies are not allowed in the office. Our team will confirm.\n\nLaunchbench Community Team', needsStaff: true, grounding: bad, quoteCount: 0 }), 'answer', 'template'), 'an unquoted claim beside "will confirm" is not sent; a code acknowledgement goes instead');
+check('route', same(rq({ draft: 'Hi,\n\nOur team will confirm the ₹500 fee shortly.\n\nTeam', needsStaff: true, grounding: bad, quoteCount: 0 }), 'answer', 'template'), 'a holding reply with an amount is not sent');
+check('route', same(rq({ needsStaff: true }), 'answer', 'draft'), 'a partly answered question with checked quotes goes now; a person answers the rest');
+check('route', same(rq({ needsStaff: true, grounding: bad }), 'answer', 'template'), 'needs a person, quotes fail: code acknowledgement');
+check('route', same(rq({ confidence: 0.6 }), 'approve', 'template'), 'a grounded but unsure answer: acknowledgement now, draft for approval');
+check('route', same(rq({ grounding: bad }), 'approve', 'template'), 'an ungrounded answer: acknowledgement now, draft for approval');
+check('route', same(rq({ amountsOk: false }), 'approve', 'template'), 'an unknown amount: acknowledgement now, draft for approval');
+check('route', same(rq({ draft: '' }), 'answer', 'template'), 'the AI draft failed: acknowledgement now, a person answers');
+check('route', isHoldingOnly('Hello Venkatesh,\n\nThanks for reaching out. Our team will confirm whether there is a safe place to park bicycles, and get back to you shortly.\n\nWarm regards,\nLaunchbench Community Team'), 'thanks plus a holding line counts as holding-only');
+check('route', !isHoldingOnly('Hi,\n\nGreat question! Our team will confirm shortly.\n\nTeam'), 'a sentence that neither thanks nor defers is not holding-only');
 
 for (const [k, p] of Object.entries(out)) {
   console.log(`\n== ${k}: ${p.summary}   approver=${p.approver}${p.fyi.length ? ' fyi=' + p.fyi : ''}  reply due ${p.reply_due}`);

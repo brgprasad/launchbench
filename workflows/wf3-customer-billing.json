@@ -184,7 +184,7 @@
       "parameters": {
         "mode": "runOnceForAllItems",
         "language": "javaScript",
-        "jsCode": "// Reply check and helpers, shared with tools/billing_rules.js.\nconst CENTRE_NAMES = { KOR: 'Koramangala', IND: 'Indiranagar', HSR: 'HSR Layout', WHF: 'Whitefield', HEB: 'Hebbal (Manyata)' };\nconst FIXED_HOLIDAYS = ['01-26', '08-15', '10-02', '11-01', '12-25'];\n\n// Every rupee amount in the text must appear in allowedText; every mustMention\n// string must appear in the text. Amounts are compared as digits, so ₹1,500,\n// Rs 1500 and INR 1,500 all match.\nfunction checkReply(text, allowedText, mustMention) {\n  const t = String(text || '');\n  const digits = s => s.replace(/[^\\d]/g, '').replace(/^0+/, '');\n  const find = s => (String(s).match(/(?:₹|\\bRs\\.?|\\bINR)\\s?\\d[\\d,]*/g) || []);\n  const allowed = new Set(find(allowedText).map(digits));\n  const amounts = find(t).map(x => x.replace(/\\s/g, ''));\n  const unknown = [...new Set(amounts.filter(a => !allowed.has(digits(a))))];\n  const flat = t.toLowerCase().replace(/\\s+/g, ' ');\n  const missing = (mustMention || []).filter(s => !flat.includes(String(s).toLowerCase()));\n  return { ok: Boolean(t.trim()) && !unknown.length && !missing.length, amounts, unknown, missing };\n}\n\nfunction demoLine(member) {\n  if (!member) return '';\n  const where = [CENTRE_NAMES[member.centre] || member.centre, member.space && member.space !== 'Open area' && member.space !== 'Virtual' ? member.space : ''].filter(Boolean).join(', ');\n  return `Demo: you're writing as ${member.company} (${member.member_id}, ${where}).`;\n}\n\n// ---------------- date and money helpers (shared with change_rules.js) ----------------\nfunction isoOk(s) { return /^\\d{4}-\\d{2}-\\d{2}$/.test(String(s || '')); }\nfunction d0(iso) { return new Date(String(iso).slice(0, 10) + 'T00:00:00Z'); }\nfunction iso(d) { return d.toISOString().slice(0, 10); }\nfunction addDays(s, n) { const d = d0(s); d.setUTCDate(d.getUTCDate() + n); return iso(d); }\nfunction lastDay(s) { const d = d0(s); return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0)).getUTCDate(); }\nfunction addMonths(s, n) {\n  const d = d0(s); const day = d.getUTCDate();\n  const t = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + n, 1));\n  t.setUTCDate(Math.min(day, lastDay(iso(t))));\n  return iso(t);\n}\nfunction daysBetween(a, b) { return Math.round((d0(b) - d0(a)) / 86400000); }\nfunction addBusinessDays(s, n) {\n  let d = s;\n  while (n > 0) { d = addDays(d, 1); const w = d0(d).getUTCDay(); if (w !== 0 && w !== 6 && !FIXED_HOLIDAYS.includes(d.slice(5))) n--; }\n  return d;\n}\nconst MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];\nconst MONTHS_LONG = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];\nfunction nice(s) { if (!isoOk(s)) return String(s || ''); const d = d0(s); return `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}`; }\nfunction monthName(s) { const d = d0(s); return `${MONTHS_LONG[d.getUTCMonth()]} ${d.getUTCFullYear()}`; }\nfunction inr(n) {\n  const neg = n < 0; const s = String(Math.round(Math.abs(n)));\n  const out = s.length <= 3 ? s : s.slice(0, -3).replace(/\\B(?=(\\d{2})+(?!\\d))/g, ',') + ',' + s.slice(-3);\n  return (neg ? '-' : '') + '₹' + out;\n}\n\n// ===== n8n wrapper (WF-3 \"Check the draft\") =====\n// Every billing reply waits for the Finance Manager. Code checks the draft's\n// amounts and key items against the facts; if it fails, the reply offered for\n// approval is built from the facts themselves. Also builds the approval email,\n// the account manager's FYI and the billing_cases row.\nconst a = $('Work out the case').first().json;\nconst ran = name => { try { const n = $(name); return n.isExecuted ? n.first().json : null; } catch (err) { return null; } };\nconst first = ran('Draft the reply');\nconst second = ran('Draft again');\nconst aiDraft = String((first && first.text) || (second && second.text) || '').trim();\nconst p = a.plan;\nconst m = a.member;\nconst ownerFirst = String(a.owner).split(' ')[0];\nconst esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');\n\n// ---- check, with a facts-only fallback ----\nconst chk = checkReply(aiDraft, a.allowed_text, a.must_mention);\nconst usedAi = Boolean(aiDraft) && chk.ok;\nconst template = `Hi ${a.contact_first},\\n\\nThank you for your email. Here is where things stand:\\n\\n${p.customer_facts.map(f => '- ' + f).join('\\n')}\\n\\n${ownerFirst}\\nFinance, Launchbench Workspaces`;\nconst draft = usedAi ? aiDraft : template;\nconst body = (a.demo_line ? a.demo_line + '\\n\\n' : '') + draft;\nconst checkText = !aiDraft ? 'The AI draft failed, so the reply below is built directly from the checked facts.'\n  : !chk.ok ? `The AI draft failed the check (${[chk.unknown.length ? `${chk.unknown.join(', ')} not in the facts` : '', chk.missing.length ? `missing ${chk.missing.join(', ')}` : ''].filter(Boolean).join('; ')}), so the reply below is built directly from the checked facts.`\n  : `Checks passed: ${chk.amounts.length === 1 ? 'the one amount matches the records' : chk.amounts.length ? `all ${chk.amounts.length} amounts match the records` : 'no amounts quoted'}${a.must_mention.length ? `; it states ${a.must_mention.join(', ')}` : ''}.`;\n\n// ---- ids, labels ----\n// Test-runner seeds repeat, so their id also carries this run's execution number.\nconst caseId = 'B-' + String(a.now).slice(0, 10).replace(/-/g, '') + '-' + (a.seed_id ? `S${a.seed_id}-x${$execution.id}` : String(a.message_id || Date.parse(a.now)).slice(-5));\nconst company = m ? m.company : (a.identity.company || '');\nconst who = (m && m.company.replace(/ (Pvt\\.|Private) Ltd\\.?$/i, '')) || a.contact_first || a.from_name;\nconst received = String(a.now || '').replace('T', ' ').slice(0, 16);\nconst files = (p.attach_invoices || []).map(n => n.replace(/\\//g, '-') + '.pdf');\n\n// ---- approval email ----\nconst box = 'white-space:pre-wrap;text-align:left;padding:10px 14px;border-radius:6px;';\nconst rows = [\n  ['From', `${esc(a.from_name)} &lt;${esc(a.reply_to)}&gt;`],\n  ['Member', m ? `${esc(m.company)} (${m.member_id}): ${esc(m.plan)}, ${m.seats} seats, ${esc(CENTRE_NAMES[m.centre] || m.centre)}${m.space && m.space !== 'Open area' ? ', ' + esc(m.space) : ''}, ${esc(m.status)}${m.exit_date ? ' (exited ' + nice(m.exit_date) + ')' : ''}`\n    + `<br>Billing contact ${esc(m.contact_email)}; account manager ${esc(m.account_manager)}`\n    + (a.identity.source ? ` <span style=\"color:#666\">(matched by ${esc(a.identity.source)})</span>` : '') : 'Not matched to a member'],\n  ['Topic', `<b>${esc(p.summary)}</b>`],\n  ['Priority', p.priority === 'high' ? '<b style=\"color:#B3261E\">High</b>' : 'Normal'],\n  ['Reply due', `${nice(p.reply_due)} (billing replies within 1 business day)`],\n];\nif (a.churn_risk) rows.push(['Churn risk', '<b>Yes</b>, flagged by the classifier']);\nif (files.length) rows.push(['Attached when sent', esc(files.join(', '))]);\nconst list = xs => `<ul>${xs.map(x => `<li>${esc(x)}</li>`).join('')}</ul>`;\nconst html = `<div style=\"text-align:left\">`\n  + `<p style=\"padding:8px 12px;border-radius:6px;background:${usedAi ? '#E3F1E7' : '#FFF4D6'}\">${esc(checkText)}</p>`\n  + (p.flags.length ? `<p style=\"padding:8px 12px;border-radius:6px;background:#FDECEA\">${esc(p.flags.join('. '))}.</p>` : '')\n  + `<p>A billing reply for <b>${esc(a.owner)}</b> to approve${p.fyi.length ? ` (FYI ${esc(p.fyi.join(', '))}: ${esc(p.fyi_reason)})` : ''}. The claim was checked against the invoices and usage records; Gemini only wrote the wording.</p>`\n  + `<table cellpadding=\"4\" style=\"border-collapse:collapse;text-align:left\">${rows.map(r => `<tr><td style=\"color:#666;vertical-align:top\">${r[0]}</td><td>${r[1]}</td></tr>`).join('')}</table>`\n  + (p.actions.length ? `<p><b>Finance to do</b></p>${list(p.actions)}` : '')\n  + (p.internal_facts.length ? `<p><b>For you only</b> (not in the reply)</p>${list(p.internal_facts)}` : '')\n  + `<p><b>Their email</b>, received ${esc(received)} IST${a.attachments ? ', attachments: ' + esc(a.attachments) : ', no attachments'}:</p>`\n  + `<div style=\"${box}background:#F6F1E9\"><b>Subject:</b> ${esc(a.subject || '(none)')}\\n\\n${esc(a.body || '')}</div>`\n  + `<p><b>The reply covers</b></p>${list(p.customer_facts)}`\n  + `<p><b>Reply</b> to ${esc(a.reply_to)} (sent when you approve):</p>`\n  + `<div style=\"${box}border-left:3px solid #F26B1D;border-radius:0\">${esc(body)}</div>`\n  + (!usedAi && aiDraft ? `<p style=\"color:#666\"><b>The AI draft that failed the check</b>, for reference:</p><div style=\"${box}color:#666;background:#F4F4F4\">${esc(aiDraft)}</div>` : '')\n  + `</div>`;\n\n// ---- FYI to the account manager (no approval needed) ----\nconst notes = [];\nif (p.fyi_emails.length) {\n  notes.push({ to: p.fyi_emails.join(','), subject: `FYI billing: ${who} (${p.fyi_reason})`,\n    html: `<div style=\"text-align:left\"><p>${esc(a.owner)} has been asked to approve a reply to ${esc(a.from_name)}: ${esc(p.summary)}.</p>`\n      + (p.flags.length ? `<p><b>${esc(p.flags.join('. '))}.</b></p>` : '') + list(p.internal_facts)\n      + (p.actions.length ? `<p><b>Finance to do</b></p>${list(p.actions)}` : '')\n      + `<p><b>Their email:</b></p><div style=\"${box}background:#F6F1E9\">${esc(a.body)}</div></div>` });\n}\n\nreturn [{ json: {\n  case_id: caseId, received_at: a.now, source: a.source, seed_id: a.seed_id, member_id: m ? m.member_id : '',\n  company, sender: a.reply_to, topics: p.topics.join(', '), invoices: p.invoices.join(', '), amount_inr: p.amount_inr,\n  actions: p.actions.join('; '), priority: p.priority, status: 'Awaiting approval', owner: a.owner,\n  draft_check: checkText, draft_reply: body,\n  // fields for the email nodes\n  message_id: a.message_id, reply_to: a.reply_to, reply_subject: a.reply_subject, reply_body: body,\n  owner_email: a.owner_email, attach_files: files,\n  approval_subject: `${p.priority === 'high' ? 'URGENT: ' : ''}${usedAi ? '' : '[CHECK] '}Approve billing reply: ${who} (${p.summary.split(':')[0]})`,\n  approval_html: html, staff_notes: notes,\n} }];\n"
+        "jsCode": "// Reply check and helpers, shared with tools/billing_rules.js.\nconst CENTRE_NAMES = { KOR: 'Koramangala', IND: 'Indiranagar', HSR: 'HSR Layout', WHF: 'Whitefield', HEB: 'Hebbal (Manyata)' };\nconst FIXED_HOLIDAYS = ['01-26', '08-15', '10-02', '11-01', '12-25'];\n\n// Every rupee amount in the text must appear in allowedText; every mustMention\n// string must appear in the text. Amounts are compared as digits, so ₹1,500,\n// Rs 1500 and INR 1,500 all match.\nfunction checkReply(text, allowedText, mustMention) {\n  const t = String(text || '');\n  const digits = s => s.replace(/[^\\d]/g, '').replace(/^0+/, '');\n  const find = s => (String(s).match(/(?:₹|\\bRs\\.?|\\bINR)\\s?\\d[\\d,]*/g) || []);\n  const allowed = new Set(find(allowedText).map(digits));\n  const amounts = find(t).map(x => x.replace(/\\s/g, ''));\n  const unknown = [...new Set(amounts.filter(a => !allowed.has(digits(a))))];\n  const flat = t.toLowerCase().replace(/\\s+/g, ' ');\n  const missing = (mustMention || []).filter(s => !flat.includes(String(s).toLowerCase()));\n  return { ok: Boolean(t.trim()) && !unknown.length && !missing.length, amounts, unknown, missing };\n}\n\nfunction demoLine(member) {\n  if (!member) return '';\n  const where = [CENTRE_NAMES[member.centre] || member.centre, member.space && member.space !== 'Open area' && member.space !== 'Virtual' ? member.space : ''].filter(Boolean).join(', ');\n  return `Demo: you're writing as ${member.company} (${member.member_id}, ${where}).`;\n}\n\n// ---------------- date and money helpers (shared with change_rules.js) ----------------\nfunction isoOk(s) { return /^\\d{4}-\\d{2}-\\d{2}$/.test(String(s || '')); }\nfunction d0(iso) { return new Date(String(iso).slice(0, 10) + 'T00:00:00Z'); }\nfunction iso(d) { return d.toISOString().slice(0, 10); }\nfunction addDays(s, n) { const d = d0(s); d.setUTCDate(d.getUTCDate() + n); return iso(d); }\nfunction lastDay(s) { const d = d0(s); return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0)).getUTCDate(); }\nfunction addMonths(s, n) {\n  const d = d0(s); const day = d.getUTCDate();\n  const t = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + n, 1));\n  t.setUTCDate(Math.min(day, lastDay(iso(t))));\n  return iso(t);\n}\nfunction daysBetween(a, b) { return Math.round((d0(b) - d0(a)) / 86400000); }\nfunction addBusinessDays(s, n) {\n  let d = s;\n  while (n > 0) { d = addDays(d, 1); const w = d0(d).getUTCDay(); if (w !== 0 && w !== 6 && !FIXED_HOLIDAYS.includes(d.slice(5))) n--; }\n  return d;\n}\nconst MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];\nconst MONTHS_LONG = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];\nfunction nice(s) { if (!isoOk(s)) return String(s || ''); const d = d0(s); return `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}`; }\nfunction monthName(s) { const d = d0(s); return `${MONTHS_LONG[d.getUTCMonth()]} ${d.getUTCFullYear()}`; }\nfunction inr(n) {\n  const neg = n < 0; const s = String(Math.round(Math.abs(n)));\n  const out = s.length <= 3 ? s : s.slice(0, -3).replace(/\\B(?=(\\d{2})+(?!\\d))/g, ',') + ',' + s.slice(-3);\n  return (neg ? '-' : '') + '₹' + out;\n}\n\n// ===== n8n wrapper (WF-3 \"Check the draft\") =====\n// Every billing reply waits for the Finance Manager. Code checks the draft's\n// amounts and key items against the facts; if it fails, the reply offered for\n// approval is built from the facts themselves. Also builds the approval email,\n// the account manager's FYI and the billing_cases row.\nconst a = $('Work out the case').first().json;\nconst ran = name => { try { const n = $(name); return n.isExecuted ? n.first().json : null; } catch (err) { return null; } };\nconst first = ran('Draft the reply');\nconst second = ran('Draft again');\nconst aiDraft = String((first && first.text) || (second && second.text) || '').trim();\nconst p = a.plan;\nconst m = a.member;\nconst ownerFirst = String(a.owner).split(' ')[0];\nconst esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');\n\n// ---- check, with a facts-only fallback ----\nconst chk = checkReply(aiDraft, a.allowed_text, a.must_mention);\nconst usedAi = Boolean(aiDraft) && chk.ok;\nconst template = `Hi ${a.contact_first},\\n\\nThank you for your email. Here is where things stand:\\n\\n${p.customer_facts.map(f => '- ' + f).join('\\n')}\\n\\n${ownerFirst}\\nFinance, Launchbench Workspaces`;\nconst draft = usedAi ? aiDraft : template;\nconst body = (a.demo_line ? a.demo_line + '\\n\\n' : '') + draft;\n// Sent at once, before the reply waits for Finance: code-written, and it promises\n// only what kb/04-billing-policy.md does (a reply within 1 business day).\nconst ackBody = (a.demo_line ? a.demo_line + '\\n\\n' : '')\n  + `Hi ${a.contact_first},\\n\\nThanks for your email. ${ownerFirst} from our Finance team has it and will reply within 1 business day.\\n\\nFinance, Launchbench Workspaces`;\nconst checkText = !aiDraft ? 'The AI draft failed, so the reply below is built directly from the checked facts.'\n  : !chk.ok ? `The AI draft failed the check (${[chk.unknown.length ? `${chk.unknown.join(', ')} not in the facts` : '', chk.missing.length ? `missing ${chk.missing.join(', ')}` : ''].filter(Boolean).join('; ')}), so the reply below is built directly from the checked facts.`\n  : `Checks passed: ${chk.amounts.length === 1 ? 'the one amount matches the records' : chk.amounts.length ? `all ${chk.amounts.length} amounts match the records` : 'no amounts quoted'}${a.must_mention.length ? `; it states ${a.must_mention.join(', ')}` : ''}.`;\n\n// ---- ids, labels ----\n// Test-runner seeds repeat, so their id also carries this run's execution number.\nconst caseId = 'B-' + String(a.now).slice(0, 10).replace(/-/g, '') + '-' + (a.seed_id ? `S${a.seed_id}-x${$execution.id}` : String(a.message_id || Date.parse(a.now)).slice(-5));\nconst company = m ? m.company : (a.identity.company || '');\nconst who = (m && m.company.replace(/ (Pvt\\.|Private) Ltd\\.?$/i, '')) || a.contact_first || a.from_name;\nconst received = String(a.now || '').replace('T', ' ').slice(0, 16);\nconst files = (p.attach_invoices || []).map(n => n.replace(/\\//g, '-') + '.pdf');\n\n// ---- approval email ----\nconst box = 'white-space:pre-wrap;text-align:left;padding:10px 14px;border-radius:6px;';\nconst rows = [\n  ['From', `${esc(a.from_name)} &lt;${esc(a.reply_to)}&gt;`],\n  ['Member', m ? `${esc(m.company)} (${m.member_id}): ${esc(m.plan)}, ${m.seats} seats, ${esc(CENTRE_NAMES[m.centre] || m.centre)}${m.space && m.space !== 'Open area' ? ', ' + esc(m.space) : ''}, ${esc(m.status)}${m.exit_date ? ' (exited ' + nice(m.exit_date) + ')' : ''}`\n    + `<br>Billing contact ${esc(m.contact_email)}; account manager ${esc(m.account_manager)}`\n    + (a.identity.source ? ` <span style=\"color:#666\">(matched by ${esc(a.identity.source)})</span>` : '') : 'Not matched to a member'],\n  ['Topic', `<b>${esc(p.summary)}</b>`],\n  ['Priority', p.priority === 'high' ? '<b style=\"color:#B3261E\">High</b>' : 'Normal'],\n  ['Reply due', `${nice(p.reply_due)} (billing replies within 1 business day)`],\n];\nif (a.churn_risk) rows.push(['Churn risk', '<b>Yes</b>, flagged by the classifier']);\nif (files.length) rows.push(['Attached when sent', esc(files.join(', '))]);\nconst list = xs => `<ul>${xs.map(x => `<li>${esc(x)}</li>`).join('')}</ul>`;\nconst html = `<div style=\"text-align:left\">`\n  + `<p style=\"padding:8px 12px;border-radius:6px;background:${usedAi ? '#E3F1E7' : '#FFF4D6'}\">${esc(checkText)}</p>`\n  + (p.flags.length ? `<p style=\"padding:8px 12px;border-radius:6px;background:#FDECEA\">${esc(p.flags.join('. '))}.</p>` : '')\n  + `<p>A billing reply for <b>${esc(a.owner)}</b> to approve${p.fyi.length ? ` (FYI ${esc(p.fyi.join(', '))}: ${esc(p.fyi_reason)})` : ''}. The claim was checked against the invoices and usage records; Gemini only wrote the wording.</p>`\n  + `<table cellpadding=\"4\" style=\"border-collapse:collapse;text-align:left\">${rows.map(r => `<tr><td style=\"color:#666;vertical-align:top\">${r[0]}</td><td>${r[1]}</td></tr>`).join('')}</table>`\n  + (p.actions.length ? `<p><b>Finance to do</b></p>${list(p.actions)}` : '')\n  + (p.internal_facts.length ? `<p><b>For you only</b> (not in the reply)</p>${list(p.internal_facts)}` : '')\n  + `<p><b>Their email</b>, received ${esc(received)} IST${a.attachments ? ', attachments: ' + esc(a.attachments) : ', no attachments'}:</p>`\n  + `<div style=\"${box}background:#F6F1E9\"><b>Subject:</b> ${esc(a.subject || '(none)')}\\n\\n${esc(a.body || '')}</div>`\n  + `<p><b>The reply covers</b></p>${list(p.customer_facts)}`\n  + `<p><b>Already sent</b> to ${esc(a.reply_to)}, so they know a reply is coming:</p>`\n  + `<div style=\"${box}background:#EEF1F5\">${esc(ackBody)}</div>`\n  + `<p><b>Reply</b> to ${esc(a.reply_to)} (sent when you approve):</p>`\n  + `<div style=\"${box}border-left:3px solid #F26B1D;border-radius:0\">${esc(body)}</div>`\n  + (!usedAi && aiDraft ? `<p style=\"color:#666\"><b>The AI draft that failed the check</b>, for reference:</p><div style=\"${box}color:#666;background:#F4F4F4\">${esc(aiDraft)}</div>` : '')\n  + `</div>`;\n\n// ---- FYI to the account manager (no approval needed) ----\nconst notes = [];\nif (p.fyi_emails.length) {\n  notes.push({ to: p.fyi_emails.join(','), subject: `FYI billing: ${who} (${p.fyi_reason})`,\n    html: `<div style=\"text-align:left\"><p>${esc(a.owner)} has been asked to approve a reply to ${esc(a.from_name)}: ${esc(p.summary)}.</p>`\n      + (p.flags.length ? `<p><b>${esc(p.flags.join('. '))}.</b></p>` : '') + list(p.internal_facts)\n      + (p.actions.length ? `<p><b>Finance to do</b></p>${list(p.actions)}` : '')\n      + `<p><b>Their email:</b></p><div style=\"${box}background:#F6F1E9\">${esc(a.body)}</div></div>` });\n}\n\nreturn [{ json: {\n  case_id: caseId, received_at: a.now, source: a.source, seed_id: a.seed_id, member_id: m ? m.member_id : '',\n  company, sender: a.reply_to, topics: p.topics.join(', '), invoices: p.invoices.join(', '), amount_inr: p.amount_inr,\n  actions: p.actions.join('; '), priority: p.priority, status: 'Awaiting approval', owner: a.owner,\n  draft_check: checkText, draft_reply: body,\n  // fields for the email nodes\n  message_id: a.message_id, reply_to: a.reply_to, reply_subject: a.reply_subject, reply_body: body, ack_body: ackBody,\n  owner_email: a.owner_email, attach_files: files,\n  approval_subject: `${p.priority === 'high' ? 'URGENT: ' : ''}${usedAi ? '' : '[CHECK] '}Approve billing reply: ${who} (${p.summary.split(':')[0]})`,\n  approval_html: html, staff_notes: notes,\n} }];\n"
       },
       "executeOnce": true
     },
@@ -282,7 +282,7 @@
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 2.2,
       "position": [
-        1856,
+        2528,
         704
       ],
       "parameters": {
@@ -327,7 +327,7 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        2080,
+        2752,
         704
       ],
       "parameters": {
@@ -359,7 +359,7 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        2304,
+        2976,
         608
       ],
       "parameters": {
@@ -391,7 +391,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2528,
+        3200,
         416
       ],
       "parameters": {
@@ -406,7 +406,7 @@
       "type": "n8n-nodes-base.googleDrive",
       "typeVersion": 3,
       "position": [
-        2752,
+        3424,
         416
       ],
       "parameters": {
@@ -447,7 +447,7 @@
       "type": "n8n-nodes-base.googleDrive",
       "typeVersion": 3,
       "position": [
-        2976,
+        3648,
         416
       ],
       "parameters": {
@@ -479,7 +479,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        3200,
+        3872,
         416
       ],
       "parameters": {
@@ -494,7 +494,7 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        3424,
+        4096,
         416
       ],
       "parameters": {
@@ -525,7 +525,7 @@
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 2.1,
       "position": [
-        3648,
+        4320,
         320
       ],
       "parameters": {
@@ -563,7 +563,7 @@
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 2.1,
       "position": [
-        3648,
+        4320,
         512
       ],
       "parameters": {
@@ -601,7 +601,7 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        3424,
+        4096,
         800
       ],
       "parameters": {
@@ -632,7 +632,7 @@
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 2.1,
       "position": [
-        3648,
+        4320,
         704
       ],
       "parameters": {
@@ -663,7 +663,7 @@
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 2.1,
       "position": [
-        3648,
+        4320,
         896
       ],
       "parameters": {
@@ -694,7 +694,7 @@
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.7,
       "position": [
-        2304,
+        2976,
         800
       ],
       "parameters": {
@@ -760,7 +760,7 @@
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.7,
       "position": [
-        3872,
+        4544,
         608
       ],
       "parameters": {
@@ -949,7 +949,7 @@
       "type": "n8n-nodes-base.filter",
       "typeVersion": 2.2,
       "position": [
-        2080,
+        2752,
         1024
       ],
       "parameters": {
@@ -981,7 +981,7 @@
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 2.1,
       "position": [
-        2304,
+        2976,
         1024
       ],
       "parameters": {
@@ -998,6 +998,99 @@
       "retryOnFail": true,
       "maxTries": 3,
       "waitBetweenTries": 5000,
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "48BDBjPeX8UnzPvh",
+          "name": "teamlaunchbench@gmail.com"
+        }
+      }
+    },
+    {
+      "id": "f23df564-f140-4608-9f05-ac493f17bccc",
+      "name": "Live email? (ack)",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1856,
+        704
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $('Check the draft').first().json.source }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              },
+              "rightValue": "live"
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "370735f5-4436-40ab-8608-7a72f6909584",
+      "name": "Reply: acknowledgement",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        2080,
+        608
+      ],
+      "parameters": {
+        "resource": "message",
+        "operation": "reply",
+        "messageId": "={{ $('Check the draft').first().json.message_id }}",
+        "emailType": "text",
+        "message": "={{ $('Check the draft').first().json.ack_body }}",
+        "options": {
+          "appendAttribution": false,
+          "replyToSenderOnly": true
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "webhookId": "fac04e09-ab47-48b3-85ba-4372d1b12ddc",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "48BDBjPeX8UnzPvh",
+          "name": "teamlaunchbench@gmail.com"
+        }
+      }
+    },
+    {
+      "id": "23e61d92-c4a1-40df-b97c-ac8f4bed24eb",
+      "name": "Send: acknowledgement",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        2080,
+        800
+      ],
+      "parameters": {
+        "resource": "message",
+        "operation": "send",
+        "sendTo": "={{ $('Check the draft').first().json.reply_to }}",
+        "subject": "={{ $('Check the draft').first().json.reply_subject }}",
+        "emailType": "text",
+        "message": "={{ $('Check the draft').first().json.ack_body }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "webhookId": "0159ef81-351a-4bbc-9e53-acb461b26029",
       "credentials": {
         "gmailOAuth2": {
           "id": "48BDBjPeX8UnzPvh",
@@ -1122,12 +1215,12 @@
             "index": 0
           },
           {
-            "node": "Ask Finance to approve",
+            "node": "Live email? (labels)",
             "type": "main",
             "index": 0
           },
           {
-            "node": "Live email? (labels)",
+            "node": "Live email? (ack)",
             "type": "main",
             "index": 0
           }
@@ -1382,6 +1475,46 @@
           }
         ]
       ]
+    },
+    "Live email? (ack)": {
+      "main": [
+        [
+          {
+            "node": "Reply: acknowledgement",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send: acknowledgement",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reply: acknowledgement": {
+      "main": [
+        [
+          {
+            "node": "Ask Finance to approve",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send: acknowledgement": {
+      "main": [
+        [
+          {
+            "node": "Ask Finance to approve",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "settings": {
@@ -1451,8 +1584,11 @@
     },
     {
       "id": "2e3040d0-dc93-4e45-ac0e-5a61562b71cc",
-      "name": "Approve and send",
+      "name": "Acknowledge, approve and send",
       "nodeNames": [
+        "Live email? (ack)",
+        "Reply: acknowledgement",
+        "Send: acknowledgement",
         "Ask Finance to approve",
         "Approved?",
         "Mark held",
@@ -1471,7 +1607,7 @@
         "Live email? (decided)",
         "Clear Awaiting approval"
       ],
-      "description": "Lakshmi approves every billing reply; invoice copies get the PDF from Drive. The Awaiting approval label is cleared on any decision."
+      "description": "An acknowledgement goes at once; the reply waits for Finance, then is sent (with the invoice PDF for copies)."
     }
   ],
   "meta": {

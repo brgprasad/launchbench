@@ -12,6 +12,7 @@
 //   data:  { pricing: {sku: value}, availability: [rows], invoices: [rows] }
 // checkReply(text, allowedText, mustMention) -> { ok, amounts, unknown, missing }
 // demoLine(member) -> "Demo: you're writing as ..." (code-written, never the AI)
+// routeQuery({...}) -> { route: auto|answer|approve, ack: draft|template } for a question's reply
 
 const CENTRE_NAMES = { KOR: 'Koramangala', IND: 'Indiranagar', HSR: 'HSR Layout', WHF: 'Whitefield', HEB: 'Hebbal (Manyata)' };
 const STAFF_EMAIL = {
@@ -364,6 +365,37 @@ function checkGrounding(quotes, kbText, questionText) {
   const related = qs.some(q => words(q).some(w => ask.some(v => same(w, v))));
   return related ? { ok: true, reason: '', quotes: qs.length }
     : { ok: false, reason: 'the quoted knowledge-base sentences share no subject with the question', quotes: qs.length };
+}
+
+// A draft that only says the team will confirm, with no answer of its own: every
+// sentence between the greeting and the sign-off thanks the sender or defers, and
+// there are no numbers or amounts. Such a reply can go out at once; a sentence
+// that states anything else could be an unchecked claim, so it can't.
+function isHoldingOnly(text) {
+  const paras = String(text || '').trim().split(/\n\s*\n/).map(p => p.replace(/\s+/g, ' ').trim()).filter(Boolean);
+  const body = paras.filter((p, i) => !(i === 0 && /^(hi|hello|dear)\b[^.!?]*$/i.test(p)) && !(i >= paras.length - 2 && i > 0 && !/[.!?]/.test(p))).join(' ');
+  if (!body || body.length > 500 || /[₹\d]/.test(body)) return false;
+  const sentences = body.split(/(?<=[.!?])\s+/).filter(Boolean);
+  const DEFER = /\b(thanks?|thank you|confirm|get back|check|look into|find out|reply|let you know|shortly|soon|reach(ing)? out|writing|glad|happy to help)\b/i;
+  return sentences.length <= 4 && sentences.every(s => DEFER.test(s)) && /\b(confirm|get back|check|look into|find out|let you know)\b/i.test(body);
+}
+
+// What happens to a question's reply (code decides; the AI's opinion is one input).
+//   route 'auto'    : the draft is the answer, checked, and is sent now.
+//   route 'answer'  : a person has to answer (the AI says the knowledge base doesn't
+//                     cover it, or the draft failed). The sender is told at once that
+//                     the team will confirm; the person then writes the answer. One human step.
+//   route 'approve' : the draft answers but isn't trusted. An acknowledgement goes at
+//                     once; the draft waits for approval.
+//   ack 'draft'     : the AI's reply is safe to send as that first reply (its quotes
+//                     check out, or it only says the team will confirm);
+//   ack 'template'  : a code-written acknowledgement is sent instead.
+function routeQuery({ draft, needsStaff, confidence, amountsOk, grounding, quoteCount }) {
+  if (!String(draft || '').trim()) return { route: 'answer', ack: 'template' };
+  const holding = quoteCount === 0 && isHoldingOnly(draft);
+  if (needsStaff || holding) return { route: 'answer', ack: amountsOk && (grounding.ok || holding) ? 'draft' : 'template' };
+  if (amountsOk && grounding.ok && confidence >= 0.8) return { route: 'auto', ack: '' };
+  return { route: 'approve', ack: 'template' };
 }
 
 function demoLine(member) {

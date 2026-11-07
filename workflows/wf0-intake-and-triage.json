@@ -1734,6 +1734,177 @@
         "unit": "seconds"
       },
       "webhookId": "ddc0c30f-2ec8-400b-a113-1f76e4b7f494"
+    },
+    {
+      "id": "763cd8b8-d94b-4288-bcf5-656092f56c76",
+      "name": "Job application?",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.2,
+      "position": [
+        1984,
+        -1920
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ !$('Attach knowledge base').item.json.triage_only && (($('Resolve identity').item.json.output || {}).intents || []).some(i => i.class === 'noise' && /job/i.test(i.subclass || '')) }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              },
+              "rightValue": ""
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "a571f682-ac0b-49b8-b458-3b9ceb32de0a",
+      "name": "Applicant hand-off",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2240,
+        -1920
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// A job application is noise to the pipeline but comes from a real person, so it\n// is acknowledged at once and passed to HR (part of Operations; careers@ in\n// kb/00-company-profile.md). Other noise (pitches, newsletters, spam) gets no reply.\nconst e = $('Attach knowledge base').item.json;\nconst r = $('Resolve identity').item.json;\nconst intent = ((r.output || {}).intents || []).find(i => i.class === 'noise' && /job/i.test(i.subclass || '')) || {};\nconst first = String(e.from_name || '').trim().split(/\\s+/)[0];\nconst esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');\nconst box = 'white-space:pre-wrap;text-align:left;padding:10px 14px;border-radius:6px;';\nconst ack = `${first ? 'Hi ' + first : 'Hello'},\\n\\nThank you for your application to Launchbench. Our HR team has it and will be in touch if your experience matches the role.\\n\\nLaunchbench Careers`;\nreturn { json: {\n  source: e.source, message_id: e.message_id, reply_to: e.reply_to,\n  reply_subject: /^re:/i.test(e.subject || '') ? e.subject : 'Re: ' + (e.subject || 'your application'),\n  ack_body: ack,\n  hr_to: 'teamlaunchbench+lb-kavya@gmail.com',\n  hr_subject: `Job application: ${e.from_name || e.from_address}${e.subject ? ' (' + e.subject + ')' : ''}`,\n  hr_html: `<div style=\"text-align:left\"><p>A job application for HR. ${esc(intent.summary || '')}</p>`\n    + `<p>The applicant has already been sent this acknowledgement:</p><div style=\"${box}background:#EEF1F5\">${esc(ack)}</div>`\n    + `<p><b>Their email</b> from ${esc(e.from_name)} &lt;${esc(e.from_address)}&gt;, received ${esc(String(e.now || '').replace('T', ' ').slice(0, 16))} IST:</p>`\n    + `<div style=\"${box}background:#F6F1E9\"><b>Subject:</b> ${esc(e.subject || '(none)')}\\n\\n${esc(e.body || '')}</div></div>`,\n} };\n"
+      }
+    },
+    {
+      "id": "fc10f5e1-ba61-45f1-b0d6-46dec74114b7",
+      "name": "Live email? (applicant)",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2496,
+        -1920
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $('Applicant hand-off').item.json.source }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              },
+              "rightValue": "live"
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "2d020ee3-6006-4ccd-9f00-a5c176cb4d4c",
+      "name": "Reply to applicant",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        2752,
+        -2016
+      ],
+      "parameters": {
+        "resource": "message",
+        "operation": "reply",
+        "messageId": "={{ $('Applicant hand-off').item.json.message_id }}",
+        "emailType": "text",
+        "message": "={{ $('Applicant hand-off').item.json.ack_body }}",
+        "options": {
+          "appendAttribution": false,
+          "replyToSenderOnly": true
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "webhookId": "ef48c1cd-b4e1-49bb-aacc-91400f46c673",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "48BDBjPeX8UnzPvh",
+          "name": "teamlaunchbench@gmail.com"
+        }
+      }
+    },
+    {
+      "id": "404fd842-f1e1-48b5-b4fd-25ed6804a6f6",
+      "name": "Send to applicant",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        2752,
+        -1824
+      ],
+      "parameters": {
+        "resource": "message",
+        "operation": "send",
+        "sendTo": "={{ $('Applicant hand-off').item.json.reply_to }}",
+        "subject": "={{ $('Applicant hand-off').item.json.reply_subject }}",
+        "emailType": "text",
+        "message": "={{ $('Applicant hand-off').item.json.ack_body }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "webhookId": "ed6e878d-bbe9-48da-bfbe-6bdc65761e27",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "48BDBjPeX8UnzPvh",
+          "name": "teamlaunchbench@gmail.com"
+        }
+      }
+    },
+    {
+      "id": "cf583373-f667-48ec-bc81-ee57a9d886d4",
+      "name": "Tell HR",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        3008,
+        -1920
+      ],
+      "parameters": {
+        "resource": "message",
+        "operation": "send",
+        "sendTo": "={{ $('Applicant hand-off').item.json.hr_to }}",
+        "subject": "={{ $('Applicant hand-off').item.json.hr_subject }}",
+        "emailType": "html",
+        "message": "={{ $('Applicant hand-off').item.json.hr_html }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "webhookId": "404d5ef4-dca0-4081-a5a5-6ec1e4a1661a",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "48BDBjPeX8UnzPvh",
+          "name": "teamlaunchbench@gmail.com"
+        }
+      }
     }
   ],
   "connections": {
@@ -1872,6 +2043,11 @@
           },
           {
             "node": "Has a billing matter?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Job application?",
             "type": "main",
             "index": 0
           }
@@ -2266,6 +2442,68 @@
           }
         ]
       ]
+    },
+    "Job application?": {
+      "main": [
+        [
+          {
+            "node": "Applicant hand-off",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Applicant hand-off": {
+      "main": [
+        [
+          {
+            "node": "Live email? (applicant)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Live email? (applicant)": {
+      "main": [
+        [
+          {
+            "node": "Reply to applicant",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send to applicant",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reply to applicant": {
+      "main": [
+        [
+          {
+            "node": "Tell HR",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send to applicant": {
+      "main": [
+        [
+          {
+            "node": "Tell HR",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "settings": {
@@ -2404,6 +2642,19 @@
         "Attach knowledge base"
       ],
       "description": "Clean up the email, set its \"now\", and attach the KB (cached for an hour), personas, members and testers."
+    },
+    {
+      "id": "fe4eb5c3-ad55-4739-a4dd-417bd3834269",
+      "name": "Acknowledge job applications",
+      "nodeNames": [
+        "Job application?",
+        "Applicant hand-off",
+        "Live email? (applicant)",
+        "Reply to applicant",
+        "Send to applicant",
+        "Tell HR"
+      ],
+      "description": "A job application gets an immediate acknowledgement and goes to HR; other noise gets no reply."
     }
   ],
   "meta": {

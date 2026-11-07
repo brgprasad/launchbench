@@ -70,7 +70,7 @@ PYTHONPATH=$GD $GD/.venv/bin/python tools/check_e2e.py --since "2026-11-06 19:48
 ```
 Afterwards, stop the approval runs it leaves waiting (n8n → Executions → filter *Waiting*) and reset the spreadsheet before real testers use it.
 
-**Real-email run (the whole path, as a tester sees it).** `tools/send_seeds.py` sends the seeds as real Gmail messages from the test account to the demo inbox, one every 30 seconds, so they go through the Gmail trigger, the bulk-mail filter and the published workflows. Member and vendor seeds get an `[as <alias>]` subject tag; prospect and noise seeds arrive as the test account. Then `check_e2e.py --run-log` matches each email to its seed by subject, checks every handler row as above, and reads the test account's inbox for the replies that came back:
+**Real-email run (the whole path, as a tester sees it).** `tools/send_seeds.py` sends the seeds as real Gmail messages from the test account to the demo inbox, one every 30 seconds, so they go through the Gmail trigger, the bulk-mail filter and the published workflows. Member and vendor seeds get an `[as <alias>]` subject tag; prospect and noise seeds arrive as the test account. Then `check_e2e.py --run-log` matches each email to its seed by subject, checks every handler row as above, and reads the test account's inbox for the replies that came back. Every seed must get at least one reply (an answer or an acknowledgement), except those marked `expected_reply: none` (suspected fraud, the pitch and the newsletter), which must get none:
 ```bash
 PYTHONPATH=$GD $GD/.venv/bin/python tools/send_seeds.py --seeds 22,34,35      # or no --seeds for all
 PYTHONPATH=$GD $GD/.venv/bin/python tools/check_e2e.py --run-log runs/send-20261107-1015.json

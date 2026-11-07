@@ -6,6 +6,7 @@ to: teamlaunchbench@gmail.com
 subject: Invoice GSS-2026-1121 - October 2026
 attachments: [attachments/guardianshield-GSS-2026-1121.pdf]
 expected_class: vendor_invoice
+expected_reply: none  # suspected fraud: a reply would tell a fraudster the address works
 expected_validation: SUSPECTED_FRAUD
 expected_action:
   - Extract from the PDF: GSTIN 29AAHFG3318R1Z9, invoice number GSS-2026-1121, PO LB-PO-2026-017, taxable ₹2,24,000, CGST + SGST ₹40,320, total ₹2,64,320, bank account ending 8851.

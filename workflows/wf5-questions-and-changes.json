@@ -220,7 +220,7 @@
       "parameters": {
         "mode": "runOnceForAllItems",
         "language": "javaScript",
-        "jsCode": "// Launchbench membership-change rules and reply checks (WF-5 Code nodes).\n//\n// Gemini only writes the wording. This code applies kb/03-membership-terms.md:\n// notice periods, exit dates, lock-ins, early-exit and partial-exit fees,\n// smaller/bigger/other-centre spaces, deposit refunds, and open invoices. It\n// also checks every draft (amounts and key dates) before anything is sent.\n// The same text is pasted into n8n; tools/test_change_rules.js runs it locally.\n//\n// planChange(input, data) -> plan\n//   input: { change: {type, seats_from, seats_to, effective, to_centre}, member: members row,\n//            now: ISO time received, churn_risk }\n//   data:  { pricing: {sku: value}, availability: [rows], invoices: [rows] }\n// checkReply(text, allowedText, mustMention) -> { ok, amounts, unknown, missing }\n// demoLine(member) -> \"Demo: you're writing as ...\" (code-written, never the AI)\n\nconst CENTRE_NAMES = { KOR: 'Koramangala', IND: 'Indiranagar', HSR: 'HSR Layout', WHF: 'Whitefield', HEB: 'Hebbal (Manyata)' };\nconst STAFF_EMAIL = {\n  'Ananya Bose': 'teamlaunchbench+lb-ananya@gmail.com',\n  'Vikram Shetty': 'teamlaunchbench+lb-vikram@gmail.com',\n  'Deepa Menon': 'teamlaunchbench+lb-deepa@gmail.com',\n  'Farhan Sheikh': 'teamlaunchbench+lb-farhan@gmail.com',\n  'Kavya Reddy': 'teamlaunchbench+lb-kavya@gmail.com',\n};\nconst HEAD_OF_SALES = 'Farhan Sheikh';\nconst HEAD_OF_OPS = 'Kavya Reddy';\nconst FIXED_HOLIDAYS = ['01-26', '08-15', '10-02', '11-01', '12-25'];\nconst BIG_ACCOUNT_INR = 100000; // monthly fee at or above this: Head of Sales hears about any exit or downsize\n\n// kb/03-membership-terms.md §2 (lock-in), §4 (notice); deposits from the price list.\nconst PLAN_RULES = {\n  'Hot desk': { kind: 'desk', sku: 'HOT', notice: 1, minLock: 0, depositMonths: 1 },\n  'Dedicated desk': { kind: 'desk', sku: 'DED', notice: 1, minLock: 3, depositMonths: 2 },\n  'Founders Plan': { kind: 'desk', sku: 'FND', notice: 1, minLock: 3, depositMonths: 1 },\n  'Private cabin': { kind: 'cabin', sku: 'CAB', notice: 2, minLock: 6, depositMonths: 2 },\n  'Virtual office': { kind: 'virtual', sku: 'VO', notice: 0, minLock: 12, depositMonths: 0 },\n};\n\n// (planChange is in \"Work out the request\"; this node needs only the checks and helpers.)\n\n// Every rupee amount in the text must appear in allowedText; every mustMention\n// string must appear in the text. Amounts are compared as digits, so ₹1,500,\n// Rs 1500 and INR 1,500 all match.\nfunction checkReply(text, allowedText, mustMention) {\n  const t = String(text || '');\n  const digits = s => s.replace(/[^\\d]/g, '').replace(/^0+/, '');\n  const find = s => (String(s).match(/(?:₹|\\bRs\\.?|\\bINR)\\s?\\d[\\d,]*/g) || []);\n  const allowed = new Set(find(allowedText).map(digits));\n  const amounts = find(t).map(x => x.replace(/\\s/g, ''));\n  const unknown = [...new Set(amounts.filter(a => !allowed.has(digits(a))))];\n  const flat = t.toLowerCase().replace(/\\s+/g, ' ');\n  const missing = (mustMention || []).filter(s => !flat.includes(String(s).toLowerCase()));\n  return { ok: Boolean(t.trim()) && !unknown.length && !missing.length, amounts, unknown, missing };\n}\n\n// A question is answered without a person only if the reply is grounded: every\n// knowledge-base sentence the AI says it relied on (kb_quotes) exists word for\n// word, and at least one shares a meaningful word with the question. The AI's\n// own confidence score is not enough: it rates invented or stretched answers 1.0.\nfunction checkGrounding(quotes, kbText, questionText) {\n  const norm = s => String(s || '').toLowerCase().replace(/[‘’]/g, \"'\").replace(/[“”]/g, '\"').replace(/[–—]/g, '-')\n    .replace(/[*_`]/g, '').replace(/[#>|]/g, ' ').replace(/\\s+/g, ' ').trim();\n  // Word for word, but punctuation and formatting are ignored: a quote that adds\n  // quotation marks or drops a bracket is still the same sentence.\n  const bare = s => ' ' + norm(s).replace(/[^a-z0-9₹]+/g, ' ').trim() + ' ';\n  const kb = bare(kbText);\n  const qs = (Array.isArray(quotes) ? quotes : []).map(q => norm(q).replace(/^[-•\\s]+|[.;:\\s]+$/g, '')).filter(q => q.length >= 12);\n  if (!qs.length) return { ok: false, reason: 'the AI quoted no knowledge-base sentence for its answer', quotes: 0 };\n  const missing = qs.filter(q => !kb.includes(bare(q)));\n  if (missing.length) return { ok: false, reason: `a quoted sentence is not in the knowledge base (\"${missing[0].slice(0, 80)}\")`, quotes: qs.length };\n  // Centre names and greetings are context, not the subject: a quote about the\n  // same centre but a different topic must not count as related.\n  const STOP = new Set(('the and for are can you our not but any has was how why who its may get one all out use yes per '\n    + 'about after again also because before being below between both could does doing during each from further have having here into itself just more most other over same should some such than that their them then there these they this those through under until very what when where which while will with would your yours ours '\n    + 'please thanks thank hello dear regards launchbench team centre center centres office tomorrow today week month member '\n    + 'koramangala indiranagar whitefield hebbal manyata layout bengaluru bangalore hsr '\n    + 'allow allowed bring available need want like know tell ask let make take come able okay fine').split(' '));\n  const words = s => [...new Set((norm(s).match(/[a-z][a-z-]{2,}/g) || []).map(w => w.length > 3 ? w.replace(/s$/, '') : w).filter(w => !STOP.has(w) && !STOP.has(w + 's')))];\n  // Same word, or one is a prefix of the other (park / parking), at least 4 letters.\n  const same = (x, y) => x === y || (Math.min(x.length, y.length) >= 4 && (x.startsWith(y) || y.startsWith(x)));\n  const ask = words(questionText);\n  const related = qs.some(q => words(q).some(w => ask.some(v => same(w, v))));\n  return related ? { ok: true, reason: '', quotes: qs.length }\n    : { ok: false, reason: 'the quoted knowledge-base sentences share no subject with the question', quotes: qs.length };\n}\n\nfunction demoLine(member) {\n  if (!member) return '';\n  const where = [CENTRE_NAMES[member.centre] || member.centre, member.space && member.space !== 'Open area' && member.space !== 'Virtual' ? member.space : ''].filter(Boolean).join(', ');\n  return `Demo: you're writing as ${member.company} (${member.member_id}, ${where}).`;\n}\n\n// ---------------- date and money helpers (shared) ----------------\nfunction isoOk(s) { return /^\\d{4}-\\d{2}-\\d{2}$/.test(String(s || '')); }\nfunction d0(iso) { return new Date(String(iso).slice(0, 10) + 'T00:00:00Z'); }\nfunction iso(d) { return d.toISOString().slice(0, 10); }\nfunction addDays(s, n) { const d = d0(s); d.setUTCDate(d.getUTCDate() + n); return iso(d); }\nfunction lastDay(s) { const d = d0(s); return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0)).getUTCDate(); }\nfunction addMonths(s, n) {\n  const d = d0(s); const day = d.getUTCDate();\n  const t = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + n, 1));\n  t.setUTCDate(Math.min(day, lastDay(iso(t))));\n  return iso(t);\n}\nfunction daysBetween(a, b) { return Math.round((d0(b) - d0(a)) / 86400000); }\n// Months from a to b (b exclusive), whole months plus the fraction of the last one.\nfunction monthsBetween(a, b) {\n  if (b <= a) return 0;\n  let n = 0;\n  while (addMonths(a, n + 1) <= b) n++;\n  const start = addMonths(a, n), next = addMonths(a, n + 1);\n  return Math.round((n + daysBetween(start, b) / daysBetween(start, next)) * 100) / 100;\n}\nfunction maxDate(...xs) { return xs.filter(isoOk).sort().pop() || ''; }\nfunction addBusinessDays(s, n) {\n  let d = s;\n  while (n > 0) { d = addDays(d, 1); const w = d0(d).getUTCDay(); if (w !== 0 && w !== 6 && !FIXED_HOLIDAYS.includes(d.slice(5))) n--; }\n  return d;\n}\nconst MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];\nconst MONTHS_LONG = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];\nfunction nice(s) { if (!isoOk(s)) return String(s || ''); const d = d0(s); return `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}`; }\nfunction monthName(s) { const d = d0(s); return `${MONTHS_LONG[d.getUTCMonth()]} ${d.getUTCFullYear()}`; }\nfunction inr(n) {\n  const neg = n < 0; const s = String(Math.round(Math.abs(n)));\n  const out = s.length <= 3 ? s : s.slice(0, -3).replace(/\\B(?=(\\d{2})+(?!\\d))/g, ',') + ',' + s.slice(-3);\n  return (neg ? '-' : '') + '₹' + out;\n}\n\n// ===== n8n wrapper (WF-5 \"Check the draft\") =====\n// Code, not the AI, decides whether a reply goes out without a person, writes\n// the demo line, the approval email, the staff notes and the requests row.\nconst a = $('Work out the request').first().json;\nconst ran = name => { try { const n = $(name); return n.isExecuted ? n.first().json : null; } catch (err) { return null; } };\nconst first = ran('Draft the reply');\nconst second = ran('Draft again');\nconst out = (first && first.output) || (second && second.output) || null;\nconst draft = out ? String(out.reply || '').trim() : '';\nconst p = a.plan;\nconst m = a.member;\nconst ownerFirst = String(a.owner).split(' ')[0];\nconst esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');\n\n// ---- checks ----\nconst chk = checkReply(draft, a.allowed_text, a.must_mention);\nconst conf = out ? Number(out.confidence) || 0 : 0;\nconst whyNot = [];\nlet grounding = null;\nif (a.path === 'change') whyNot.push('membership changes always need the account manager\\'s approval');\nelse {\n  if (!draft) whyNot.push('the AI draft failed');\n  if (out && out.needs_staff) whyNot.push('the AI asked for a person to check: ' + (out.staff_reason || 'no reason given'));\n  if (out && conf < 0.8) whyNot.push(`the AI's confidence is ${conf} (needs 0.8)`);\n  if (chk.unknown.length) whyNot.push('an amount is not in the price list');\n  if (draft) {\n    grounding = checkGrounding(out && out.kb_quotes, a.allowed_text, `${a.subject || ''}\\n${a.body || ''}`);\n    if (!grounding.ok) whyNot.push(grounding.reason);\n  }\n}\nconst autoSend = a.path === 'query' && whyNot.length === 0 && chk.ok;\nconst source = a.path === 'change' ? 'the computed facts' : 'the price list and knowledge base';\nconst checkText = !draft ? 'The AI draft failed, so a holding reply is shown instead.'\n  : [chk.unknown.length ? `CHECK BEFORE APPROVING: ${chk.unknown.join(', ')} ${chk.unknown.length > 1 ? 'are' : 'is'} not in ${source}.` : '',\n     chk.missing.length ? `CHECK BEFORE APPROVING: the draft doesn't mention ${chk.missing.join(', ')}.` : ''].filter(Boolean).join(' ')\n    || `Checks passed: ${chk.amounts.length === 1 ? `the one amount matches ${source}` : chk.amounts.length ? `all ${chk.amounts.length} amounts match ${source}` : 'no amounts quoted'}${a.must_mention.length ? `; it states ${a.must_mention.join(' and ')}` : ''}${grounding && grounding.ok ? `; its ${grounding.quotes} quoted knowledge-base sentence${grounding.quotes === 1 ? '' : 's'} exist and match the question` : ''}.`;\nconst groundingText = grounding && !grounding.ok ? ` Not sent automatically: ${grounding.reason}.` : '';\n\nconst fallback = a.path === 'change'\n  ? `Hi ${a.contact_first},\\n\\nThanks for your email. I have your request and will get back to you shortly with the details.\\n\\n${ownerFirst}\\nTeam Launchbench`\n  : `Hi ${a.contact_first},\\n\\nThanks for your email. Our team will get back to you shortly.\\n\\nLaunchbench Community Team`;\nconst body = (a.demo_line ? a.demo_line + '\\n\\n' : '') + (draft || fallback);\n\n// ---- ids, labels ----\n// Test-runner seeds repeat, so their id also carries this run's execution number.\nconst requestId = 'R-' + String(a.now).slice(0, 10).replace(/-/g, '') + '-' + (a.seed_id ? `S${a.seed_id}-x${$execution.id}` : String(a.message_id || Date.parse(a.now)).slice(-5));\nconst kind = a.path === 'change' ? (p && p.type) || 'change' : 'question';\nconst company = m ? m.company : (a.identity.company || '');\nconst who = company || a.contact_first || a.from_name;\nconst received = String(a.now || '').replace('T', ' ').slice(0, 16);\n\n// ---- approval email ----\nconst box = 'white-space:pre-wrap;text-align:left;padding:10px 14px;border-radius:6px;';\nconst okColour = chk.ok && draft ? '#E3F1E7' : '#FDECEA';\nconst rows = [\n  ['From', `${esc(a.from_name)} &lt;${esc(a.reply_to)}&gt;`],\n  ['Member', m ? `${esc(m.company)} (${m.member_id}): ${esc(m.plan)}, ${m.seats} seats, ${esc(CENTRE_NAMES[m.centre] || m.centre)}${m.space && m.space !== 'Open area' ? ', ' + esc(m.space) : ''}` +\n    `<br>${inr(Number(m.monthly_seat_fee_inr))}/month, deposit ${inr(Number(m.security_deposit_inr))}${m.lock_in_end ? `, lock-in to ${nice(m.lock_in_end)}` : ', no lock-in'}` +\n    (a.identity.source ? ` <span style=\"color:#666\">(matched by ${esc(a.identity.source)})</span>` : '') : 'Not matched to a member'],\n];\nif (a.path === 'change') {\n  rows.push(['Request', `<b>${esc(kind)}</b>${p && p.summary ? ': ' + esc(p.summary.replace(new RegExp('^' + kind + ',? ?'), '')) : ''}`]);\n  if (p && p.reply_due) rows.push(['Reply due', `${nice(p.reply_due)} (notices are confirmed within 2 business days)`]);\n  if (a.churn_risk) rows.push(['Churn risk', '<b>Yes</b>, flagged by the classifier']);\n} else {\n  rows.push(['Question', esc(a.intents.filter(i => i.class === 'general_query').map(i => i.summary).join(' | ') || a.subject)]);\n  rows.push(['AI confidence', String(conf) + (out && out.needs_staff ? ` (asked for a person: ${esc(out.staff_reason)})` : '')]);\n  if (out && out.upsell_hint) rows.push(['Upsell idea', esc(out.upsell_hint)]);\n}\nconst list = xs => `<ul>${xs.map(x => `<li>${esc(x)}</li>`).join('')}</ul>`;\nconst html = `<div style=\"text-align:left\">`\n  + `<p style=\"padding:8px 12px;border-radius:6px;background:${okColour}\">${esc(checkText)}</p>`\n  + (p && p.flags && p.flags.length ? `<p style=\"padding:8px 12px;border-radius:6px;background:#FFF4D6\">${esc(p.flags.join('. '))}.</p>` : '')\n  + `<p>${a.path === 'change' ? `A membership change for <b>${esc(a.owner)}</b>${p && p.fyi.length ? ` (FYI ${esc(p.fyi.join(', '))}: ${esc(p.fyi_reason)})` : ''}. Every date and fee was computed from the membership terms; Gemini only wrote the wording.`\n      : `A question for <b>${esc(a.owner)}</b> to check, because ${esc(whyNot.join('; ') || 'a check failed')}.`}</p>`\n  + `<table cellpadding=\"4\" style=\"border-collapse:collapse;text-align:left\">${rows.map(r => `<tr><td style=\"color:#666;vertical-align:top\">${r[0]}</td><td>${r[1]}</td></tr>`).join('')}</table>`\n  + (p && p.internal_facts && p.internal_facts.length ? `<p><b>For you only</b> (not in the reply)</p>${list(p.internal_facts)}` : '')\n  + (p && p.fee_basis ? `<p style=\"color:#666\">Fee basis: ${esc(p.fee_basis)}. Indicative; confirm before quoting.</p>` : '')\n  + `<p><b>Their email</b>, received ${esc(received)} IST:</p>`\n  + `<div style=\"${box}background:#F6F1E9\"><b>Subject:</b> ${esc(a.subject || '(none)')}\\n\\n${esc(a.body || '')}</div>`\n  + (p ? `<p><b>The reply covers</b></p>${list(p.customer_facts)}` : '')\n  + `<p><b>Draft reply</b> to ${esc(a.reply_to)} (sent when you approve):</p>`\n  + `<div style=\"${box}border-left:3px solid #F26B1D;border-radius:0\">${esc(body)}</div>`\n  + `</div>`;\n\n// ---- staff notes (no approval needed) ----\nconst notes = [];\nif (p && p.fyi_emails && p.fyi_emails.length) {\n  notes.push({ to: p.fyi_emails.join(','), subject: `FYI: ${who} wants to ${kind === 'exit' ? 'leave' : kind} (${p.fyi_reason})`,\n    html: `<div style=\"text-align:left\"><p>${esc(a.owner)} has been asked to approve the reply. ${esc(p.summary)}.</p>${list(p.internal_facts)}`\n      + `<p><b>Their email:</b></p><div style=\"${box}background:#F6F1E9\">${esc(a.body)}</div></div>` });\n}\nif (a.path === 'query' && m && out && out.upsell_hint) {\n  notes.push({ to: STAFF_EMAIL[m.account_manager] || STAFF_EMAIL[HEAD_OF_SALES], subject: `Upsell idea: ${m.company}`,\n    html: `<div style=\"text-align:left\"><p>${esc(out.upsell_hint)}</p><p>${esc(m.company)} (${m.member_id}) has ${m.seats} × ${esc(m.plan)} at ${esc(CENTRE_NAMES[m.centre] || m.centre)}. `\n      + `${autoSend ? 'Their question was answered automatically.' : 'Their question is waiting for approval.'}</p>`\n      + `<p><b>Their email:</b></p><div style=\"${box}background:#F6F1E9\">${esc(a.body)}</div></div>` });\n}\n\nreturn [{ json: {\n  request_id: requestId, received_at: a.now, source: a.source, seed_id: a.seed_id, member_id: m ? m.member_id : '',\n  company, sender: a.reply_to, kind,\n  summary: a.path === 'change' ? (p && p.summary) || '' : a.intents.filter(i => i.class === 'general_query').map(i => i.summary).join(' | '),\n  effective_date: p ? p.exit_date || p.effective || '' : '', new_monthly_inr: p && p.new_monthly ? p.new_monthly : '',\n  fee_inr: p && p.fee_inr ? p.fee_inr : '', confidence: out ? conf : '',\n  decision: autoSend ? 'auto-send' : 'approval', status: autoSend ? 'Sending automatically' : 'Awaiting approval',\n  owner: a.owner, draft_check: checkText + groundingText, draft_reply: body,\n  // fields for the email nodes\n  auto_send: autoSend, message_id: a.message_id, reply_to: a.reply_to, reply_subject: a.reply_subject, reply_body: body,\n  owner_email: a.owner_email,\n  approval_subject: `${chk.ok && draft ? '' : '[CHECK] '}Approve reply: ${who} (${kind}${p && (p.exit_date || p.effective) ? ', ' + nice(p.exit_date || p.effective) : ''})`,\n  approval_html: html, staff_notes: notes,\n} }];\n"
+        "jsCode": "// Launchbench membership-change rules and reply checks (WF-5 Code nodes).\n//\n// Gemini only writes the wording. This code applies kb/03-membership-terms.md:\n// notice periods, exit dates, lock-ins, early-exit and partial-exit fees,\n// smaller/bigger/other-centre spaces, deposit refunds, and open invoices. It\n// also checks every draft (amounts and key dates) before anything is sent.\n// The same text is pasted into n8n; tools/test_change_rules.js runs it locally.\n//\n// planChange(input, data) -> plan\n//   input: { change: {type, seats_from, seats_to, effective, to_centre}, member: members row,\n//            now: ISO time received, churn_risk }\n//   data:  { pricing: {sku: value}, availability: [rows], invoices: [rows] }\n// checkReply(text, allowedText, mustMention) -> { ok, amounts, unknown, missing }\n// demoLine(member) -> \"Demo: you're writing as ...\" (code-written, never the AI)\n// routeQuery({...}) -> { route: auto|answer|approve, ack: draft|template } for a question's reply\n\nconst CENTRE_NAMES = { KOR: 'Koramangala', IND: 'Indiranagar', HSR: 'HSR Layout', WHF: 'Whitefield', HEB: 'Hebbal (Manyata)' };\nconst STAFF_EMAIL = {\n  'Ananya Bose': 'teamlaunchbench+lb-ananya@gmail.com',\n  'Vikram Shetty': 'teamlaunchbench+lb-vikram@gmail.com',\n  'Deepa Menon': 'teamlaunchbench+lb-deepa@gmail.com',\n  'Farhan Sheikh': 'teamlaunchbench+lb-farhan@gmail.com',\n  'Kavya Reddy': 'teamlaunchbench+lb-kavya@gmail.com',\n};\nconst HEAD_OF_SALES = 'Farhan Sheikh';\nconst HEAD_OF_OPS = 'Kavya Reddy';\nconst FIXED_HOLIDAYS = ['01-26', '08-15', '10-02', '11-01', '12-25'];\nconst BIG_ACCOUNT_INR = 100000; // monthly fee at or above this: Head of Sales hears about any exit or downsize\n\n// kb/03-membership-terms.md §2 (lock-in), §4 (notice); deposits from the price list.\nconst PLAN_RULES = {\n  'Hot desk': { kind: 'desk', sku: 'HOT', notice: 1, minLock: 0, depositMonths: 1 },\n  'Dedicated desk': { kind: 'desk', sku: 'DED', notice: 1, minLock: 3, depositMonths: 2 },\n  'Founders Plan': { kind: 'desk', sku: 'FND', notice: 1, minLock: 3, depositMonths: 1 },\n  'Private cabin': { kind: 'cabin', sku: 'CAB', notice: 2, minLock: 6, depositMonths: 2 },\n  'Virtual office': { kind: 'virtual', sku: 'VO', notice: 0, minLock: 12, depositMonths: 0 },\n};\n\n// (planChange is in \"Work out the request\"; this node needs only the checks and helpers.)\n\n// Every rupee amount in the text must appear in allowedText; every mustMention\n// string must appear in the text. Amounts are compared as digits, so ₹1,500,\n// Rs 1500 and INR 1,500 all match.\nfunction checkReply(text, allowedText, mustMention) {\n  const t = String(text || '');\n  const digits = s => s.replace(/[^\\d]/g, '').replace(/^0+/, '');\n  const find = s => (String(s).match(/(?:₹|\\bRs\\.?|\\bINR)\\s?\\d[\\d,]*/g) || []);\n  const allowed = new Set(find(allowedText).map(digits));\n  const amounts = find(t).map(x => x.replace(/\\s/g, ''));\n  const unknown = [...new Set(amounts.filter(a => !allowed.has(digits(a))))];\n  const flat = t.toLowerCase().replace(/\\s+/g, ' ');\n  const missing = (mustMention || []).filter(s => !flat.includes(String(s).toLowerCase()));\n  return { ok: Boolean(t.trim()) && !unknown.length && !missing.length, amounts, unknown, missing };\n}\n\n// A question is answered without a person only if the reply is grounded: every\n// knowledge-base sentence the AI says it relied on (kb_quotes) exists word for\n// word, and at least one shares a meaningful word with the question. The AI's\n// own confidence score is not enough: it rates invented or stretched answers 1.0.\nfunction checkGrounding(quotes, kbText, questionText) {\n  const norm = s => String(s || '').toLowerCase().replace(/[‘’]/g, \"'\").replace(/[“”]/g, '\"').replace(/[–—]/g, '-')\n    .replace(/[*_`]/g, '').replace(/[#>|]/g, ' ').replace(/\\s+/g, ' ').trim();\n  // Word for word, but punctuation and formatting are ignored: a quote that adds\n  // quotation marks or drops a bracket is still the same sentence.\n  const bare = s => ' ' + norm(s).replace(/[^a-z0-9₹]+/g, ' ').trim() + ' ';\n  const kb = bare(kbText);\n  const qs = (Array.isArray(quotes) ? quotes : []).map(q => norm(q).replace(/^[-•\\s]+|[.;:\\s]+$/g, '')).filter(q => q.length >= 12);\n  if (!qs.length) return { ok: false, reason: 'the AI quoted no knowledge-base sentence for its answer', quotes: 0 };\n  const missing = qs.filter(q => !kb.includes(bare(q)));\n  if (missing.length) return { ok: false, reason: `a quoted sentence is not in the knowledge base (\"${missing[0].slice(0, 80)}\")`, quotes: qs.length };\n  // Centre names and greetings are context, not the subject: a quote about the\n  // same centre but a different topic must not count as related.\n  const STOP = new Set(('the and for are can you our not but any has was how why who its may get one all out use yes per '\n    + 'about after again also because before being below between both could does doing during each from further have having here into itself just more most other over same should some such than that their them then there these they this those through under until very what when where which while will with would your yours ours '\n    + 'please thanks thank hello dear regards launchbench team centre center centres office tomorrow today week month member '\n    + 'koramangala indiranagar whitefield hebbal manyata layout bengaluru bangalore hsr '\n    + 'allow allowed bring available need want like know tell ask let make take come able okay fine').split(' '));\n  const words = s => [...new Set((norm(s).match(/[a-z][a-z-]{2,}/g) || []).map(w => w.length > 3 ? w.replace(/s$/, '') : w).filter(w => !STOP.has(w) && !STOP.has(w + 's')))];\n  // Same word, or one is a prefix of the other (park / parking), at least 4 letters.\n  const same = (x, y) => x === y || (Math.min(x.length, y.length) >= 4 && (x.startsWith(y) || y.startsWith(x)));\n  const ask = words(questionText);\n  const related = qs.some(q => words(q).some(w => ask.some(v => same(w, v))));\n  return related ? { ok: true, reason: '', quotes: qs.length }\n    : { ok: false, reason: 'the quoted knowledge-base sentences share no subject with the question', quotes: qs.length };\n}\n\n// A draft that only says the team will confirm, with no answer of its own: every\n// sentence between the greeting and the sign-off thanks the sender or defers, and\n// there are no numbers or amounts. Such a reply can go out at once; a sentence\n// that states anything else could be an unchecked claim, so it can't.\nfunction isHoldingOnly(text) {\n  const paras = String(text || '').trim().split(/\\n\\s*\\n/).map(p => p.replace(/\\s+/g, ' ').trim()).filter(Boolean);\n  const body = paras.filter((p, i) => !(i === 0 && /^(hi|hello|dear)\\b[^.!?]*$/i.test(p)) && !(i >= paras.length - 2 && i > 0 && !/[.!?]/.test(p))).join(' ');\n  if (!body || body.length > 500 || /[₹\\d]/.test(body)) return false;\n  const sentences = body.split(/(?<=[.!?])\\s+/).filter(Boolean);\n  const DEFER = /\\b(thanks?|thank you|confirm|get back|check|look into|find out|reply|let you know|shortly|soon|reach(ing)? out|writing|glad|happy to help)\\b/i;\n  return sentences.length <= 4 && sentences.every(s => DEFER.test(s)) && /\\b(confirm|get back|check|look into|find out|let you know)\\b/i.test(body);\n}\n\n// What happens to a question's reply (code decides; the AI's opinion is one input).\n//   route 'auto'    : the draft is the answer, checked, and is sent now.\n//   route 'answer'  : a person has to answer (the AI says the knowledge base doesn't\n//                     cover it, or the draft failed). The sender is told at once that\n//                     the team will confirm; the person then writes the answer. One human step.\n//   route 'approve' : the draft answers but isn't trusted. An acknowledgement goes at\n//                     once; the draft waits for approval.\n//   ack 'draft'     : the AI's reply is safe to send as that first reply (its quotes\n//                     check out, or it only says the team will confirm);\n//   ack 'template'  : a code-written acknowledgement is sent instead.\nfunction routeQuery({ draft, needsStaff, confidence, amountsOk, grounding, quoteCount }) {\n  if (!String(draft || '').trim()) return { route: 'answer', ack: 'template' };\n  const holding = quoteCount === 0 && isHoldingOnly(draft);\n  if (needsStaff || holding) return { route: 'answer', ack: amountsOk && (grounding.ok || holding) ? 'draft' : 'template' };\n  if (amountsOk && grounding.ok && confidence >= 0.8) return { route: 'auto', ack: '' };\n  return { route: 'approve', ack: 'template' };\n}\n\nfunction demoLine(member) {\n  if (!member) return '';\n  const where = [CENTRE_NAMES[member.centre] || member.centre, member.space && member.space !== 'Open area' && member.space !== 'Virtual' ? member.space : ''].filter(Boolean).join(', ');\n  return `Demo: you're writing as ${member.company} (${member.member_id}, ${where}).`;\n}\n\n// ---------------- date and money helpers (shared) ----------------\nfunction isoOk(s) { return /^\\d{4}-\\d{2}-\\d{2}$/.test(String(s || '')); }\nfunction d0(iso) { return new Date(String(iso).slice(0, 10) + 'T00:00:00Z'); }\nfunction iso(d) { return d.toISOString().slice(0, 10); }\nfunction addDays(s, n) { const d = d0(s); d.setUTCDate(d.getUTCDate() + n); return iso(d); }\nfunction lastDay(s) { const d = d0(s); return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0)).getUTCDate(); }\nfunction addMonths(s, n) {\n  const d = d0(s); const day = d.getUTCDate();\n  const t = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + n, 1));\n  t.setUTCDate(Math.min(day, lastDay(iso(t))));\n  return iso(t);\n}\nfunction daysBetween(a, b) { return Math.round((d0(b) - d0(a)) / 86400000); }\n// Months from a to b (b exclusive), whole months plus the fraction of the last one.\nfunction monthsBetween(a, b) {\n  if (b <= a) return 0;\n  let n = 0;\n  while (addMonths(a, n + 1) <= b) n++;\n  const start = addMonths(a, n), next = addMonths(a, n + 1);\n  return Math.round((n + daysBetween(start, b) / daysBetween(start, next)) * 100) / 100;\n}\nfunction maxDate(...xs) { return xs.filter(isoOk).sort().pop() || ''; }\nfunction addBusinessDays(s, n) {\n  let d = s;\n  while (n > 0) { d = addDays(d, 1); const w = d0(d).getUTCDay(); if (w !== 0 && w !== 6 && !FIXED_HOLIDAYS.includes(d.slice(5))) n--; }\n  return d;\n}\nconst MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];\nconst MONTHS_LONG = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];\nfunction nice(s) { if (!isoOk(s)) return String(s || ''); const d = d0(s); return `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}`; }\nfunction monthName(s) { const d = d0(s); return `${MONTHS_LONG[d.getUTCMonth()]} ${d.getUTCFullYear()}`; }\nfunction inr(n) {\n  const neg = n < 0; const s = String(Math.round(Math.abs(n)));\n  const out = s.length <= 3 ? s : s.slice(0, -3).replace(/\\B(?=(\\d{2})+(?!\\d))/g, ',') + ',' + s.slice(-3);\n  return (neg ? '-' : '') + '₹' + out;\n}\n\n// ===== n8n wrapper (WF-5 \"Check the draft\") =====\n// Code, not the AI, decides whether a reply goes out without a person, writes\n// the demo line, the approval email, the staff notes and the requests row.\nconst a = $('Work out the request').first().json;\nconst ran = name => { try { const n = $(name); return n.isExecuted ? n.first().json : null; } catch (err) { return null; } };\nconst first = ran('Draft the reply');\nconst second = ran('Draft again');\nconst out = (first && first.output) || (second && second.output) || null;\nconst draft = out ? String(out.reply || '').trim() : '';\nconst p = a.plan;\nconst m = a.member;\nconst ownerFirst = String(a.owner).split(' ')[0];\nconst esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');\n\n// ---- checks ----\nconst chk = checkReply(draft, a.allowed_text, a.must_mention);\nconst conf = out ? Number(out.confidence) || 0 : 0;\nconst whyNot = [];\nlet grounding = null;\nif (a.path === 'change') whyNot.push('membership changes always need the account manager\\'s approval');\nelse {\n  if (!draft) whyNot.push('the AI draft failed');\n  if (out && out.needs_staff) whyNot.push('the AI asked for a person to check: ' + String(out.staff_reason || 'no reason given').replace(/[.\\s]+$/, ''));\n  if (out && conf < 0.8) whyNot.push(`the AI's confidence is ${conf} (needs 0.8)`);\n  if (chk.unknown.length) whyNot.push('an amount is not in the price list');\n  if (draft) {\n    grounding = checkGrounding(out && out.kb_quotes, a.allowed_text, `${a.subject || ''}\\n${a.body || ''}`);\n    if (!grounding.ok) whyNot.push(grounding.reason);\n  }\n}\n// Every sender hears back at once. Code picks what they get and what a person does next.\nconst r = a.path === 'change' ? { route: 'approve', ack: 'template' }\n  : routeQuery({ draft, needsStaff: Boolean(out && out.needs_staff), confidence: conf, amountsOk: chk.ok,\n      grounding: grounding || { ok: false }, quoteCount: grounding ? grounding.quotes : 0 });\nconst autoSend = r.route === 'auto';\nconst source = a.path === 'change' ? 'the computed facts' : 'the price list and knowledge base';\nconst checkText = !draft ? 'The AI draft failed, so a holding reply is shown instead.'\n  : [chk.unknown.length ? `CHECK BEFORE APPROVING: ${chk.unknown.join(', ')} ${chk.unknown.length > 1 ? 'are' : 'is'} not in ${source}.` : '',\n     chk.missing.length ? `CHECK BEFORE APPROVING: the draft doesn't mention ${chk.missing.join(', ')}.` : ''].filter(Boolean).join(' ')\n    || `Checks passed: ${chk.amounts.length === 1 ? `the one amount matches ${source}` : chk.amounts.length ? `all ${chk.amounts.length} amounts match ${source}` : 'no amounts quoted'}${a.must_mention.length ? `; it states ${a.must_mention.join(' and ')}` : ''}${grounding && grounding.ok ? `; its ${grounding.quotes} quoted knowledge-base sentence${grounding.quotes === 1 ? '' : 's'} exist and match the question` : ''}.`;\nconst groundingText = grounding && !grounding.ok ? ` Not sent automatically: ${grounding.reason}.` : '';\n\nconst fallback = a.path === 'change'\n  ? `Hi ${a.contact_first},\\n\\nThanks for your email. I have your request and will get back to you shortly with the details.\\n\\n${ownerFirst}\\nTeam Launchbench`\n  : `Hi ${a.contact_first},\\n\\nThanks for your email. Our team will get back to you shortly.\\n\\nLaunchbench Community Team`;\nconst demo = a.demo_line ? a.demo_line + '\\n\\n' : '';\nconst body = demo + (draft || fallback);\n// The first reply, sent at once when a person still has to act. Code writes the\n// acknowledgement; the AI's draft is used only when it is safe as it stands.\nconst ackTemplate = a.path === 'change'\n  ? `Hi ${a.contact_first},\\n\\nThanks for your email. ${ownerFirst} from our team has your request and will confirm the details${p && p.reply_due ? ' by ' + nice(p.reply_due) : ' shortly'}.\\n\\nTeam Launchbench`\n  : `Hi ${a.contact_first},\\n\\nThanks for your question. ${ownerFirst} from our team will look into it and get back to you shortly.\\n\\nLaunchbench Community Team`;\nconst ackBody = autoSend ? '' : demo + (r.ack === 'draft' ? draft : ackTemplate);\n// A person's typed answer is sent between these.\nconst answerOpen = `${demo}Hi ${a.contact_first},\\n\\n`;\nconst answerClose = `\\n\\n${ownerFirst}\\nTeam Launchbench`;\n\n// ---- ids, labels ----\n// Test-runner seeds repeat, so their id also carries this run's execution number.\nconst requestId = 'R-' + String(a.now).slice(0, 10).replace(/-/g, '') + '-' + (a.seed_id ? `S${a.seed_id}-x${$execution.id}` : String(a.message_id || Date.parse(a.now)).slice(-5));\nconst kind = a.path === 'change' ? (p && p.type) || 'change' : 'question';\nconst company = m ? m.company : (a.identity.company || '');\nconst who = company || a.contact_first || a.from_name;\nconst received = String(a.now || '').replace('T', ' ').slice(0, 16);\n\n// ---- approval email ----\nconst box = 'white-space:pre-wrap;text-align:left;padding:10px 14px;border-radius:6px;';\nconst okColour = chk.ok && draft ? '#E3F1E7' : '#FDECEA';\nconst answering = r.route === 'answer';\n// A holding reply needs no knowledge-base quote, so that check isn't a reason here.\nconst why = answering && r.ack === 'draft' && grounding && !grounding.ok ? whyNot.filter(w => w !== grounding.reason) : whyNot;\nconst ackNote = answering\n  ? (r.ack === 'draft' ? 'Sent to them straight away, because it only says the team will confirm' + (grounding && grounding.ok ? ' and its quoted knowledge-base sentences check out' : '') + '.'\n    : (draft ? 'The AI\\'s draft was not safe to send as it stood' : 'The AI draft failed') + ', so a standard acknowledgement went to them straight away.')\n  : 'Sent to them straight away, so they know a reply is coming.';\nconst rows = [\n  ['From', `${esc(a.from_name)} &lt;${esc(a.reply_to)}&gt;`],\n  ['Member', m ? `${esc(m.company)} (${m.member_id}): ${esc(m.plan)}, ${m.seats} seats, ${esc(CENTRE_NAMES[m.centre] || m.centre)}${m.space && m.space !== 'Open area' ? ', ' + esc(m.space) : ''}` +\n    `<br>${inr(Number(m.monthly_seat_fee_inr))}/month, deposit ${inr(Number(m.security_deposit_inr))}${m.lock_in_end ? `, lock-in to ${nice(m.lock_in_end)}` : ', no lock-in'}` +\n    (a.identity.source ? ` <span style=\"color:#666\">(matched by ${esc(a.identity.source)})</span>` : '') : 'Not matched to a member'],\n];\nif (a.path === 'change') {\n  rows.push(['Request', `<b>${esc(kind)}</b>${p && p.summary ? ': ' + esc(p.summary.replace(new RegExp('^' + kind + ',? ?'), '')) : ''}`]);\n  if (p && p.reply_due) rows.push(['Reply due', `${nice(p.reply_due)} (notices are confirmed within 2 business days)`]);\n  if (a.churn_risk) rows.push(['Churn risk', '<b>Yes</b>, flagged by the classifier']);\n} else {\n  rows.push(['Question', esc(a.intents.filter(i => i.class === 'general_query').map(i => i.summary).join(' | ') || a.subject)]);\n  rows.push(['AI confidence', String(conf) + (out && out.needs_staff ? ` (asked for a person: ${esc(out.staff_reason)})` : '')]);\n  if (out && out.upsell_hint) rows.push(['Upsell idea', esc(out.upsell_hint)]);\n}\nconst list = xs => `<ul>${xs.map(x => `<li>${esc(x)}</li>`).join('')}</ul>`;\nconst html = `<div style=\"text-align:left\">`\n  + (answering ? '' : `<p style=\"padding:8px 12px;border-radius:6px;background:${okColour}\">${esc(checkText)}</p>`)\n  + (p && p.flags && p.flags.length ? `<p style=\"padding:8px 12px;border-radius:6px;background:#FFF4D6\">${esc(p.flags.join('. '))}.</p>` : '')\n  + `<p>${a.path === 'change' ? `A membership change for <b>${esc(a.owner)}</b>${p && p.fyi.length ? ` (FYI ${esc(p.fyi.join(', '))}: ${esc(p.fyi_reason)})` : ''}. Every date and fee was computed from the membership terms; Gemini only wrote the wording.`\n      : answering ? `A question for <b>${esc(a.owner)}</b> to answer, because ${esc(why.join('; ') || 'the AI could not answer it')}.`\n      : `A question for <b>${esc(a.owner)}</b> to check, because ${esc(why.join('; ') || 'a check failed')}.`}</p>`\n  + `<table cellpadding=\"4\" style=\"border-collapse:collapse;text-align:left\">${rows.map(r => `<tr><td style=\"color:#666;vertical-align:top\">${r[0]}</td><td>${r[1]}</td></tr>`).join('')}</table>`\n  + (p && p.internal_facts && p.internal_facts.length ? `<p><b>For you only</b> (not in the reply)</p>${list(p.internal_facts)}` : '')\n  + (p && p.fee_basis ? `<p style=\"color:#666\">Fee basis: ${esc(p.fee_basis)}. Indicative; confirm before quoting.</p>` : '')\n  + `<p><b>Their email</b>, received ${esc(received)} IST:</p>`\n  + `<div style=\"${box}background:#F6F1E9\"><b>Subject:</b> ${esc(a.subject || '(none)')}\\n\\n${esc(a.body || '')}</div>`\n  + (p ? `<p><b>The reply covers</b></p>${list(p.customer_facts)}` : '')\n  + `<p><b>Already sent</b> to ${esc(a.reply_to)}. ${esc(ackNote)}</p>`\n  + `<div style=\"${box}background:#EEF1F5\">${esc(ackBody)}</div>`\n  + (answering\n    ? `<p><b>Your answer:</b> press the button below and type it. It is sent as a reply in their thread, like this:</p>`\n      + `<div style=\"${box}border-left:3px solid #F26B1D;border-radius:0\">${esc(answerOpen)}<i>[your answer]</i>${esc(answerClose)}</div>`\n    : `<p><b>Draft reply</b> to ${esc(a.reply_to)} (sent when you approve):</p>`\n      + `<div style=\"${box}border-left:3px solid #F26B1D;border-radius:0\">${esc(body)}</div>`)\n  + `</div>`;\n\n// ---- staff notes (no approval needed) ----\nconst notes = [];\nif (p && p.fyi_emails && p.fyi_emails.length) {\n  notes.push({ to: p.fyi_emails.join(','), subject: `FYI: ${who} wants to ${kind === 'exit' ? 'leave' : kind} (${p.fyi_reason})`,\n    html: `<div style=\"text-align:left\"><p>${esc(a.owner)} has been asked to approve the reply. ${esc(p.summary)}.</p>${list(p.internal_facts)}`\n      + `<p><b>Their email:</b></p><div style=\"${box}background:#F6F1E9\">${esc(a.body)}</div></div>` });\n}\nif (a.path === 'query' && m && out && out.upsell_hint) {\n  notes.push({ to: STAFF_EMAIL[m.account_manager] || STAFF_EMAIL[HEAD_OF_SALES], subject: `Upsell idea: ${m.company}`,\n    html: `<div style=\"text-align:left\"><p>${esc(out.upsell_hint)}</p><p>${esc(m.company)} (${m.member_id}) has ${m.seats} × ${esc(m.plan)} at ${esc(CENTRE_NAMES[m.centre] || m.centre)}. `\n      + `${autoSend ? 'Their question was answered automatically.' : answering ? 'Their question is waiting for an answer from the team.' : 'Their question is waiting for approval.'}</p>`\n      + `<p><b>Their email:</b></p><div style=\"${box}background:#F6F1E9\">${esc(a.body)}</div></div>` });\n}\n\nreturn [{ json: {\n  request_id: requestId, received_at: a.now, source: a.source, seed_id: a.seed_id, member_id: m ? m.member_id : '',\n  company, sender: a.reply_to, kind,\n  summary: a.path === 'change' ? (p && p.summary) || '' : a.intents.filter(i => i.class === 'general_query').map(i => i.summary).join(' | '),\n  effective_date: p ? p.exit_date || p.effective || '' : '', new_monthly_inr: p && p.new_monthly ? p.new_monthly : '',\n  fee_inr: p && p.fee_inr ? p.fee_inr : '', confidence: out ? conf : '',\n  decision: autoSend ? 'auto-send' : answering ? 'staff answer' : 'approval',\n  status: autoSend ? 'Sending automatically' : answering ? 'Awaiting answer' : 'Awaiting approval',\n  owner: a.owner, draft_check: checkText + groundingText, draft_reply: body,\n  // fields for the email nodes\n  auto_send: autoSend, route: r.route, ack_body: ackBody, answer_open: answerOpen, answer_close: answerClose, contact_first: a.contact_first,\n  message_id: a.message_id, reply_to: a.reply_to, reply_subject: a.reply_subject, reply_body: body,\n  owner_email: a.owner_email,\n  approval_subject: answering ? `Answer needed: ${who} (question)`\n    : `${chk.ok && draft ? '' : '[CHECK] '}Approve reply: ${who} (${kind}${p && (p.exit_date || p.effective) ? ', ' + nice(p.exit_date || p.effective) : ''})`,\n  approval_html: html, staff_notes: notes,\n} }];\n"
       },
       "executeOnce": true
     },
@@ -432,7 +432,7 @@
           "mappingMode": "defineBelow",
           "value": {
             "request_id": "={{ $('Check the draft').item.json.request_id }}",
-            "status": "={{ $('Check the draft').item.json.auto_send ? 'Sent automatically' : 'Approved and sent' }}"
+            "status": "={{ $('Check the draft').item.json.route === 'answer' ? 'Answered by ' + $('Check the draft').item.json.owner : $('Check the draft').item.json.auto_send ? 'Sent automatically' : 'Approved and sent' }}"
           },
           "matchingColumns": [
             "request_id"
@@ -509,8 +509,8 @@
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 2.2,
       "position": [
-        2960,
-        416
+        3632,
+        400
       ],
       "parameters": {
         "resource": "message",
@@ -554,8 +554,8 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        3184,
-        416
+        3856,
+        400
       ],
       "parameters": {
         "conditions": {
@@ -586,8 +586,8 @@
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.7,
       "position": [
-        3408,
-        512
+        4080,
+        880
       ],
       "parameters": {
         "operation": "update",
@@ -606,7 +606,7 @@
           "mappingMode": "defineBelow",
           "value": {
             "request_id": "={{ $('Check the draft').item.json.request_id }}",
-            "status": "={{ $json.data && $json.data.approved === false ? 'Held by ' + $('Check the draft').item.json.owner : 'No decision within 2 days' }}"
+            "status": "={{ $('Check the draft').item.json.route === 'answer' ? 'No answer within 2 days' : $json.data && $json.data.approved === false ? 'Held by ' + $('Check the draft').item.json.owner : 'No decision within 2 days' }}"
           },
           "matchingColumns": [
             "request_id"
@@ -744,7 +744,7 @@
       "typeVersion": 2.2,
       "position": [
         2736,
-        640
+        -352
       ],
       "parameters": {
         "conditions": {
@@ -776,7 +776,7 @@
       "typeVersion": 2.1,
       "position": [
         2960,
-        640
+        -352
       ],
       "parameters": {
         "resource": "message",
@@ -805,8 +805,8 @@
       "type": "n8n-nodes-base.filter",
       "typeVersion": 2.2,
       "position": [
-        3184,
-        800
+        3856,
+        1040
       ],
       "parameters": {
         "conditions": {
@@ -837,8 +837,8 @@
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 2.1,
       "position": [
-        3408,
-        800
+        4080,
+        1040
       ],
       "parameters": {
         "resource": "message",
@@ -854,6 +854,298 @@
       "retryOnFail": true,
       "maxTries": 3,
       "waitBetweenTries": 5000,
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "48BDBjPeX8UnzPvh",
+          "name": "teamlaunchbench@gmail.com"
+        }
+      }
+    },
+    {
+      "id": "8b03145e-365e-476b-bfce-faae3dd54df4",
+      "name": "Live email? (ack)",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2960,
+        480
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $('Check the draft').item.json.source }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              },
+              "rightValue": "live"
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "21bcac12-5038-4f02-a569-b5e22cf2ee23",
+      "name": "Reply: acknowledgement",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        3184,
+        400
+      ],
+      "parameters": {
+        "resource": "message",
+        "operation": "reply",
+        "messageId": "={{ $('Check the draft').item.json.message_id }}",
+        "emailType": "text",
+        "message": "={{ $('Check the draft').item.json.ack_body }}",
+        "options": {
+          "appendAttribution": false,
+          "replyToSenderOnly": true
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "webhookId": "4722e2ee-bfd4-480e-ad78-2440d832399d",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "48BDBjPeX8UnzPvh",
+          "name": "teamlaunchbench@gmail.com"
+        }
+      }
+    },
+    {
+      "id": "91a72402-a3a6-40fb-83e7-9c84c50948c1",
+      "name": "Send: acknowledgement",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        3184,
+        576
+      ],
+      "parameters": {
+        "resource": "message",
+        "operation": "send",
+        "sendTo": "={{ $('Check the draft').item.json.reply_to }}",
+        "subject": "={{ $('Check the draft').item.json.reply_subject }}",
+        "emailType": "text",
+        "message": "={{ $('Check the draft').item.json.ack_body }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "webhookId": "833f1cc0-a8b7-4427-8471-5ac411f1cc38",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "48BDBjPeX8UnzPvh",
+          "name": "teamlaunchbench@gmail.com"
+        }
+      }
+    },
+    {
+      "id": "8d537efb-3328-495c-9065-4d8a3d125b2f",
+      "name": "Approve or answer?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        3408,
+        480
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $('Check the draft').item.json.route === 'approve' }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              },
+              "rightValue": ""
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "e6314c80-9783-48c9-b4ac-dd4140b6e8fe",
+      "name": "Ask for the answer",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        3632,
+        720
+      ],
+      "parameters": {
+        "resource": "message",
+        "operation": "sendAndWait",
+        "sendTo": "={{ $('Check the draft').item.json.owner_email }}",
+        "subject": "={{ $('Check the draft').item.json.approval_subject }}",
+        "message": "={{ $('Check the draft').item.json.approval_html }}",
+        "responseType": "freeText",
+        "options": {
+          "limitWaitTime": {
+            "values": {
+              "limitType": "afterTimeInterval",
+              "resumeAmount": 2,
+              "resumeUnit": "days"
+            }
+          },
+          "appendAttribution": false,
+          "messageButtonLabel": "Write the answer",
+          "responseFormTitle": "={{ 'Your answer to ' + $('Check the draft').item.json.contact_first }}",
+          "responseFormDescription": "It is sent as a reply in their thread, after the greeting and before your name.",
+          "responseFormButtonLabel": "Send the answer"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "webhookId": "885321c6-3860-4b32-96de-716ccda1972f",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "48BDBjPeX8UnzPvh",
+          "name": "teamlaunchbench@gmail.com"
+        }
+      }
+    },
+    {
+      "id": "7c9e857e-c3fd-4826-b612-aeb21e014a80",
+      "name": "Answered?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        3856,
+        720
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ String(($json.data && $json.data.text) || '').trim().length > 0 }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              },
+              "rightValue": ""
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "b3e8d28d-f4df-4b6f-837d-158c01b4d4ba",
+      "name": "Live email? (answer)",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        4080,
+        640
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $('Check the draft').item.json.source }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              },
+              "rightValue": "live"
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "bdaef2e7-1396-4021-b8f3-4735599921de",
+      "name": "Reply: answer",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        4304,
+        560
+      ],
+      "parameters": {
+        "resource": "message",
+        "operation": "reply",
+        "messageId": "={{ $('Check the draft').item.json.message_id }}",
+        "emailType": "text",
+        "message": "={{ $('Check the draft').item.json.answer_open + String($('Ask for the answer').item.json.data.text).trim() + $('Check the draft').item.json.answer_close }}",
+        "options": {
+          "appendAttribution": false,
+          "replyToSenderOnly": true
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "webhookId": "adc2284c-83ab-469b-b989-83b38e0d3e73",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "48BDBjPeX8UnzPvh",
+          "name": "teamlaunchbench@gmail.com"
+        }
+      }
+    },
+    {
+      "id": "1b58a100-8018-4f0a-99b8-e2803a1727f0",
+      "name": "Send: answer",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        4304,
+        736
+      ],
+      "parameters": {
+        "resource": "message",
+        "operation": "send",
+        "sendTo": "={{ $('Check the draft').item.json.reply_to }}",
+        "subject": "={{ $('Check the draft').item.json.reply_subject }}",
+        "emailType": "text",
+        "message": "={{ $('Check the draft').item.json.answer_open + String($('Ask for the answer').item.json.data.text).trim() + $('Check the draft').item.json.answer_close }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "webhookId": "6305d6d1-58cd-4b30-9959-265ae5d9aa20",
       "credentials": {
         "gmailOAuth2": {
           "id": "48BDBjPeX8UnzPvh",
@@ -1012,7 +1304,7 @@
         ],
         [
           {
-            "node": "Ask for approval",
+            "node": "Live email? (ack)",
             "type": "main",
             "index": 0
           }
@@ -1187,6 +1479,138 @@
           }
         ]
       ]
+    },
+    "Live email? (ack)": {
+      "main": [
+        [
+          {
+            "node": "Reply: acknowledgement",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send: acknowledgement",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reply: acknowledgement": {
+      "main": [
+        [
+          {
+            "node": "Approve or answer?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send: acknowledgement": {
+      "main": [
+        [
+          {
+            "node": "Approve or answer?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Approve or answer?": {
+      "main": [
+        [
+          {
+            "node": "Ask for approval",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Ask for the answer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ask for the answer": {
+      "main": [
+        [
+          {
+            "node": "Answered?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Live email? (decided)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Answered?": {
+      "main": [
+        [
+          {
+            "node": "Live email? (answer)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Mark held",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Live email? (answer)": {
+      "main": [
+        [
+          {
+            "node": "Reply: answer",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send: answer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reply: answer": {
+      "main": [
+        [
+          {
+            "node": "Mark sent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send: answer": {
+      "main": [
+        [
+          {
+            "node": "Mark sent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "settings": {
@@ -1256,21 +1680,30 @@
       "description": "Live email: Awaiting approval while the account manager decides."
     },
     {
-      "id": "c95dfd5f-ce67-42f8-99b3-1822483ce277",
-      "name": "Send or ask for approval",
+      "id": "38151854-9dec-42a0-958b-8a55261c8e88",
+      "name": "Reply, then answer or approve",
       "nodeNames": [
         "Send without approval?",
         "Live email?",
         "Reply to sender",
-        "Mark sent",
         "Send to sender",
+        "Mark sent",
+        "Live email? (ack)",
+        "Reply: acknowledgement",
+        "Send: acknowledgement",
+        "Approve or answer?",
         "Ask for approval",
         "Approved?",
         "Mark held",
+        "Ask for the answer",
+        "Answered?",
+        "Live email? (answer)",
+        "Reply: answer",
+        "Send: answer",
         "Live email? (decided)",
         "Clear Awaiting approval"
       ],
-      "description": "Questions that pass the checks go out at once; the rest wait for approval (Awaiting approval label, cleared on any decision)."
+      "description": "Checked answers go at once. Otherwise the sender gets an immediate reply, then the owner either types the answer or approves the draft."
     }
   ],
   "meta": {

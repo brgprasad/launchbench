@@ -128,7 +128,7 @@ WF-T Test runner: feeds the 35 seed emails into WF-0 without sending mail (regre
 | 31 | Adversarial | Written in Hindi (Devanagari script) |
 | 32 | Adversarial | A reply whose quoted earlier message mentions an invoice: only the new text counts |
 | 33 | Adversarial | An ordinary supplier payment query: a false fraud alarm fails |
-| 34 | Query, known gap | Step-free access and an accessible washroom: not in the knowledge base, so "the team will confirm" and approval, nothing invented |
+| 34 | Query, known gap | Step-free access and an accessible washroom: not in the knowledge base, so "the team will confirm" goes at once and a person answers; nothing invented |
 | 35 | Query, known gap | Bicycles at Whitefield: a near miss next to the covered two-wheeler parking, which must not be stretched to fit |
 
 ## Facts that often trip up a reader

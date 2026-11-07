@@ -8,7 +8,7 @@ compares it with the expectations in the seed's front matter:
     requests, ap_invoices (a vendor email only gets a row when it has a PDF)
   - leads.lead_score (expected_lead_score), tickets.priority (expected_priority),
     ap_invoices.validation_status (expected_validation), billing priority,
-    requests.decision (expected_decision: auto-send or approval)
+    requests.decision (expected_decision: auto-send, staff answer or approval)
   - whether the AI draft passed its checks or a template / [CHECK] was used
   - rows in the errors tab since the run started
 
@@ -19,8 +19,10 @@ Usage (needs the labs Google sign-in, like score_triage.py):
 After tools/send_seeds.py (real emails), pass its run log instead. Rows carry no
 seed_id then, so each email is found in triage_log by its subject, and handler
 rows by their received_at. It also reads the test account's inbox (labs-mail
-sign-in) for the replies a tester would get: an auto-sent answer must arrive,
-and each reply's first words are listed.
+sign-in) for the replies a tester would get: every email must get at least one
+reply at once (an answer or an acknowledgement), except seeds marked
+expected_reply: none (suspected fraud, pitches, newsletters), which must get
+none. Each reply's first words are listed.
   PYTHONPATH=$GD $GD/.venv/bin/python tools/check_e2e.py --run-log runs/send-20261107-1015.json
 """
 import json
@@ -43,7 +45,8 @@ def seeds():
         get = lambda k: (re.search(rf"^{k}:\s*(.*)$", fm, re.M) or [None, ""])[1].strip()
         sid = get("id").zfill(2)
         out[sid] = {"class": get("expected_class"), "score": get("expected_lead_score"), "priority": get("expected_priority"),
-                    "validation": get("expected_validation"), "decision": get("expected_decision"), "pdf": "attachments/" in get("attachments"), "file": f.name}
+                    "validation": get("expected_validation"), "decision": get("expected_decision"),
+                    "reply": get("expected_reply").split("#")[0].strip(), "pdf": "attachments/" in get("attachments"), "file": f.name}
     return out
 
 
@@ -147,11 +150,6 @@ def main():
             bad.append("billing class but no billing_cases row")
         if R:
             r = R[-1]; notes.append(f"request {r['kind']} {r['decision']}")
-            if log:
-                got_reply = replies.get(sid, [])
-                notes.append(f"{len(got_reply)} repl{'y' if len(got_reply) == 1 else 'ies'} in inbox")
-                if r["decision"] == "auto-send" and not got_reply: bad.append("auto-send decided but no reply reached the sender")
-                for g in got_reply: notes.append("  ↳ " + g[:70])
             if e["decision"] and r["decision"] != e["decision"]:
                 bad.append(f"decision {r['decision']}, expected {e['decision']}: " + str(r.get("draft_check", ""))[-120:])
             if "CHECK BEFORE APPROVING" in str(r.get("draft_check", "")) or "failed" in str(r.get("draft_check", "")).lower(): bad.append("request draft failed its check: " + str(r.get("draft_check", ""))[:90])
@@ -163,6 +161,12 @@ def main():
                 st = str(A[-1]["validation_status"]); notes.append(f"AP {st} checks={A[-1].get('checks','')}")
                 v = e["validation"].split()[0] if e["validation"] else ""
                 if v and STATUS.get(v, v.lower()) not in st.lower(): bad.append(f"validation {st}, expected {v}")
+        if log:
+            got_reply = replies.get(sid, [])
+            notes.append(f"{len(got_reply)} repl{'y' if len(got_reply) == 1 else 'ies'} in inbox")
+            if e["reply"] == "none" and got_reply: bad.append("a reply was sent, but this email should get none")
+            if e["reply"] != "none" and not got_reply: bad.append("no reply reached the sender")
+            for g in got_reply: notes.append("  ↳ " + g[:70])
         problems += bool(bad)
         print(f"{sid} {'FAIL' if bad else 'ok  '} {classes[:45]:45} | {'; '.join(notes)}")
         for b_ in bad:

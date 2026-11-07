@@ -18,8 +18,12 @@ These are the points an expert reviewer will probe.
    | Kind of reply | What happens |
    |---|---|
    | FAQ answers, acknowledgements | Sent automatically |
-   | Anything involving money or contracts | Drafted, then sent after a staff member clicks Approve |
+   | Anything involving money or contracts | An acknowledgement at once; the reply is drafted, then sent after a staff member clicks Approve |
+   | A question the knowledge base doesn't cover | "The team will confirm" at once; a staff member types the answer (no second approval) |
    | Fraud suspicions | Never answered; escalated |
+   | Bulk mail, pitches, newsletters | No reply |
+
+   Every other sender hears back within minutes, so nobody waits in silence for a human step. The acknowledgements are written by code, promise only what the knowledge base does (billing: a reply within 1 business day; notices: confirmed within 2 business days), and are in English even when the full reply is in the sender's language.
 
 4. **Everything is visible.** Every email ends with:
    - a Gmail label
@@ -126,6 +130,7 @@ WF-0 calls it for any `customer_billing` intent, except a billing remark inside 
   - **Payment status / late fee / waiver / bank details:** open and overdue invoices, late fee, day-30 warning; a waiver request goes to Finance with the 12-month history; bank details never change by email.
   - An invoice number that isn't the member's is never described.
 - **Reply:** Gemini writes it as Lakshmi from the customer facts, in the sender's language. Code checks every ₹ amount and the key items; if the draft fails, the reply offered is built from the facts.
+- **Acknowledgement (auto-send):** code-written, before anything waits: Lakshmi from Finance will reply within 1 business day (`kb/04-billing-policy.md`).
 - **Approval:** every reply waits for **Lakshmi Narayan (Finance Manager)**: the card shows the record check, flags, "Finance to do" actions, internal notes, their email and the reply. High priority (our error, overdue deposit, churn) puts URGENT in the subject. Approved → sent (threaded reply for live email; with the PDF for copies). Hold or 2 days → marked.
 - **FYI** to the account manager when the error is ours, the deposit is overdue, the member says they left, or there is churn risk.
 - **Log:** one row per case in `billing_cases` (topics, invoices, amount, actions, priority, status).
@@ -151,22 +156,28 @@ WF-0 calls it for any `customer_billing` intent, except a billing remark inside 
 
   | Outcome | Action |
   |---|---|
+  | Every outcome except suspected fraud | An acknowledgement to the vendor at once (code-written: received, with Accounts Payable) |
   | HOLD (missing PO) | Draft to the vendor (in practice, the tester), sent after approval |
   | FLAG | Notice to Finance, plus COO if the amount is over ₹2L |
   | **Suspected fraud** | No reply; urgent alert to `+lb-lakshmi` and `+lb-meera` |
 
 ### WF-5 Changes and general queries
 WF-0 calls it for any email with a `change_request`, or a `general_query` that isn't part of a lead (WF-1's quote answers those).
-- **General queries:** Gemini answers from the knowledge base and returns `confidence`, `needs_staff` (+ reason), an optional `upsell_hint` and `kb_quotes`, the knowledge-base sentences the answer relies on. **Code** sends it without a person only if confidence ≥ 0.8, `needs_staff` is false, every ₹ amount appears in the KB, and the answer is grounded: every quoted sentence exists word for word in the KB, and at least one shares a meaningful word with the question (`checkGrounding` in `tools/change_rules.js`). The self-rated confidence alone is not trusted: in live tests Gemini rated an invented dress code, and a pet rule applied to a question about children, at 0.9–1.0. A question the KB doesn't cover gets "the team will confirm" and goes for approval; seeds 34 and 35 keep two such gaps on purpose. The word check is coarse: a near miss on the same word (bicycle versus two-wheeler parking) is caught only by the prompt. Otherwise it goes for approval: the member's account manager, or Kavya (Head of Operations) for non-members. An upsell hint becomes a note to the account manager.
+- **General queries:** Gemini answers from the knowledge base and returns `confidence`, `needs_staff` (+ reason), an optional `upsell_hint` and `kb_quotes`, the knowledge-base sentences the answer relies on. **Code** sends it without a person only if confidence ≥ 0.8, `needs_staff` is false, every ₹ amount appears in the KB, and the answer is grounded: every quoted sentence exists word for word in the KB, and at least one shares a meaningful word with the question (`checkGrounding` in `tools/change_rules.js`). The self-rated confidence alone is not trusted: in live tests Gemini rated an invented dress code, and a pet rule applied to a question about children, at 0.9–1.0. The word check is coarse: a near miss on the same word (bicycle versus two-wheeler parking) is caught only by the prompt. Code then routes every question (`routeQuery` in `tools/change_rules.js`) so the sender always hears back at once:
+  - **auto-send:** the checked answer goes.
+  - **staff answer:** the AI says the KB doesn't cover it (or the draft failed). Its "the team will confirm …" reply goes at once if it says nothing else (every sentence thanks or defers, no numbers; `isHoldingOnly`) or its quotes check out; otherwise a code-written acknowledgement goes. The owner then gets a card with a text box, and what they type is sent as a threaded reply. One human step, not an approval of a holding line. Seeds 34 and 35 keep two such gaps on purpose.
+  - **approval:** the draft answers but isn't trusted (low confidence, ungrounded, an unknown amount). A code-written acknowledgement goes at once; the draft waits for approval.
+
+  The owner is the member's account manager, or Kavya (Head of Operations) for non-members. An upsell hint becomes a note to the account manager.
 - **Changes:** `tools/change_rules.js` (tested by `tools/test_change_rules.js`) applies `kb/03-membership-terms.md`:
   - notice by plan; exit date = the later of the notice end and the lock-in end; deposit refund by exit + 30 days, less ₹500 per unreturned card
   - early-exit fee for lock-in months left; desks may drop 20% in the lock-in with 2 months' notice, beyond that a partial exit
   - cabins can't be partly released: the best-fitting smaller cabin anywhere, plus the best at their own centre, with the partial-exit difference
   - moves: 1 month's notice, new centre's rates; upgrades: free, new minimum lock-in
   - open and overdue invoices for the account manager
-  Facts are split into **customer facts** (the reply) and **internal facts** (the approval card only: fees, new monthly fee, deposit change). Gemini writes the reply from customer facts only; code checks every ₹ amount and the key dates. The account manager approves every change; the Head of Sales gets an FYI on churn risk, any fee, or an exit/downsize of a ₹1L+/month account.
+  Facts are split into **customer facts** (the reply) and **internal facts** (the approval card only: fees, new monthly fee, deposit change). Gemini writes the reply from customer facts only; code checks every ₹ amount and the key dates. The sender gets a code-written acknowledgement at once (with the reply-by date); the account manager approves every change; the Head of Sales gets an FYI on churn risk, any fee, or an exit/downsize of a ₹1L+/month account.
 - Gemini's instructions live in their own Code node ("Write the prompt"), separate from the rules.
-- Every reply is logged to the `requests` tab (`auto-send` or `approval`, then `Sent automatically`, `Approved and sent`, `Held by …` or `No decision within 2 days`).
+- Every reply is logged to the `requests` tab (`auto-send`, `staff answer` or `approval`, then `Sent automatically`, `Answered by …`, `Approved and sent`, `Held by …`, `No answer within 2 days` or `No decision within 2 days`).
 - **Member fallback (WF-0):** for member-only classes with no member named, WF-0 uses the sender's domain (seed emails), then the tester's `member_alias`, then assigns the least-used member persona and saves it to `testers`.
 
 ### WF-E Errors
@@ -222,7 +233,7 @@ Live email only (seeds have no Gmail message). Gmail labels by ID, so the IDs ar
 | `Lead/Hot`, `Lead/Warm`, `Lead/Cold` | WF-1 | After scoring |
 | `Issue/P1` … `Issue/P4` | WF-2 | With the acknowledgement |
 | `Vendor/Pass`, `Vendor/Hold` (also return, duplicate), `Vendor/Flag`, `Vendor/Fraud` | WF-4 | After the checks |
-| `Awaiting approval` | WF-1, WF-3, WF-4, WF-5 | Added when the approval card goes out, removed on approve, hold or lapse |
+| `Awaiting approval` | WF-1, WF-3, WF-4, WF-5 | Added when the approval or answer card goes out, removed on approve, hold, answer or lapse |
 | `Error` | WF-E | An email still unread 10 minutes after it arrived |
 
 ## 7. Build order (after the trial starts)

@@ -72,6 +72,10 @@ const usedAi = Boolean(aiDraft) && chk.ok;
 const template = `Hi ${a.contact_first},\n\nThank you for your email. Here is where things stand:\n\n${p.customer_facts.map(f => '- ' + f).join('\n')}\n\n${ownerFirst}\nFinance, Launchbench Workspaces`;
 const draft = usedAi ? aiDraft : template;
 const body = (a.demo_line ? a.demo_line + '\n\n' : '') + draft;
+// Sent at once, before the reply waits for Finance: code-written, and it promises
+// only what kb/04-billing-policy.md does (a reply within 1 business day).
+const ackBody = (a.demo_line ? a.demo_line + '\n\n' : '')
+  + `Hi ${a.contact_first},\n\nThanks for your email. ${ownerFirst} from our Finance team has it and will reply within 1 business day.\n\nFinance, Launchbench Workspaces`;
 const checkText = !aiDraft ? 'The AI draft failed, so the reply below is built directly from the checked facts.'
   : !chk.ok ? `The AI draft failed the check (${[chk.unknown.length ? `${chk.unknown.join(', ')} not in the facts` : '', chk.missing.length ? `missing ${chk.missing.join(', ')}` : ''].filter(Boolean).join('; ')}), so the reply below is built directly from the checked facts.`
   : `Checks passed: ${chk.amounts.length === 1 ? 'the one amount matches the records' : chk.amounts.length ? `all ${chk.amounts.length} amounts match the records` : 'no amounts quoted'}${a.must_mention.length ? `; it states ${a.must_mention.join(', ')}` : ''}.`;
@@ -108,6 +112,8 @@ const html = `<div style="text-align:left">`
   + `<p><b>Their email</b>, received ${esc(received)} IST${a.attachments ? ', attachments: ' + esc(a.attachments) : ', no attachments'}:</p>`
   + `<div style="${box}background:#F6F1E9"><b>Subject:</b> ${esc(a.subject || '(none)')}\n\n${esc(a.body || '')}</div>`
   + `<p><b>The reply covers</b></p>${list(p.customer_facts)}`
+  + `<p><b>Already sent</b> to ${esc(a.reply_to)}, so they know a reply is coming:</p>`
+  + `<div style="${box}background:#EEF1F5">${esc(ackBody)}</div>`
   + `<p><b>Reply</b> to ${esc(a.reply_to)} (sent when you approve):</p>`
   + `<div style="${box}border-left:3px solid #F26B1D;border-radius:0">${esc(body)}</div>`
   + (!usedAi && aiDraft ? `<p style="color:#666"><b>The AI draft that failed the check</b>, for reference:</p><div style="${box}color:#666;background:#F4F4F4">${esc(aiDraft)}</div>` : '')
@@ -129,7 +135,7 @@ return [{ json: {
   actions: p.actions.join('; '), priority: p.priority, status: 'Awaiting approval', owner: a.owner,
   draft_check: checkText, draft_reply: body,
   // fields for the email nodes
-  message_id: a.message_id, reply_to: a.reply_to, reply_subject: a.reply_subject, reply_body: body,
+  message_id: a.message_id, reply_to: a.reply_to, reply_subject: a.reply_subject, reply_body: body, ack_body: ackBody,
   owner_email: a.owner_email, attach_files: files,
   approval_subject: `${p.priority === 'high' ? 'URGENT: ' : ''}${usedAi ? '' : '[CHECK] '}Approve billing reply: ${who} (${p.summary.split(':')[0]})`,
   approval_html: html, staff_notes: notes,

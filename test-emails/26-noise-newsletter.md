@@ -6,6 +6,7 @@ to: teamlaunchbench@gmail.com
 subject: This week in flex space: occupancy trends, pricing, and more
 attachments: []
 expected_class: noise
+expected_reply: none  # a newsletter: no reply
 expected_action:
   - Classify as a newsletter.
   - Archive it, or label it "Read later". No reply.

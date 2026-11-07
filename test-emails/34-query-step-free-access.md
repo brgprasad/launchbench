@@ -6,10 +6,10 @@ to: teamlaunchbench@gmail.com
 subject: Step-free access for a new teammate
 attachments: []
 expected_class: general_query
-expected_decision: approval
+expected_decision: staff answer
 expected_action:
   - Identify the member: M015, ByteBazaar Commerce, hot desks at Indiranagar.
-  - The knowledge base says nothing about step-free entry or an accessible washroom. Reply that the team will confirm, and send the draft for approval, not automatically.
+  - The knowledge base says nothing about step-free entry or an accessible washroom. Reply at once that the team will confirm (nothing invented), and ask a person to write the answer; no approval of the holding reply.
   - Must not invent a ramp, an accessible washroom or wheelchair access, and must not offer the service lift (it is for large deliveries).
   - Known gap, kept on purpose: it measures how uncovered questions are handled.
 kb_refs: []

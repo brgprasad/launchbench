@@ -6,6 +6,7 @@ to: teamlaunchbench@gmail.com
 subject: URGENT: Updated bank details for payment of SS/26-27/0611
 attachments: []
 expected_class: vendor_invoice
+expected_reply: none  # suspected fraud: a reply would tell a fraudster the address works
 expected_validation: SUSPECTED_FRAUD
 expected_action:
   - Detect the fraud signals:

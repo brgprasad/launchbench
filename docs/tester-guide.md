@@ -13,16 +13,17 @@ Thank you for testing. This guide has everything you need: one email address, so
 ## What to expect
 
 ### When replies arrive
-Anything involving money or a contract waits for a human to approve it, as it would in a real business. The automation drafts the reply, checks it and sends it to the responsible staff member with **Approve** and **Don't send** buttons. In this demo, the demo owner plays all the staff and clicks those buttons, so these replies can take a few hours.
+Every email from a person gets a reply within minutes: the answer itself, or an acknowledgement saying who will reply and by when. Anything involving money or a contract then waits for a human to approve it, as it would in a real business. The automation drafts the reply, checks it and sends it to the responsible staff member with **Approve** and **Don't send** buttons. In this demo, the demo owner plays all the staff and clicks those buttons, so these replies can take a few hours.
 
 | You write about | What you receive | When |
 |---|---|---|
-| A general question (pets, opening hours, parking, day pass) | The answer | 2–3 minutes |
+| A general question (pets, opening hours, parking, day pass) | The answer. If the company's policies don't cover it: "our team will confirm", then a staff member's own answer | 2–3 minutes; the staff answer later |
 | A facility problem (AC, Wi-Fi, cleaning, a broken chair) | An acknowledgement with a ticket number, priority and a fix-by time | 2–3 minutes |
 | Renting space (a lead) | A thank-you at once; then a priced quote | Quote after approval |
-| A billing question or dispute | A reply that checks your claim against your invoices, sometimes with the invoice PDF attached | After approval (Finance) |
-| A membership change (downsize, upgrade, give notice) | A reply with the dates and fees that apply to you | After approval (account manager) |
-| A supplier invoice (PDF) | Nothing, if it is fine, over budget or suspicious: it goes to Finance internally. A reply only if you need to fix something (for example a missing PO), after approval | See the spreadsheet |
+| A billing question or dispute | An acknowledgement at once; then a reply that checks your claim against your invoices, sometimes with the invoice PDF attached | Reply after approval (Finance) |
+| A membership change (downsize, upgrade, give notice) | An acknowledgement at once; then a reply with the dates and fees that apply to you | Reply after approval (account manager) |
+| A supplier invoice (PDF) | "Received" at once, unless it looks like fraud (then nothing at all). A further reply only if you need to fix something (for example a missing PO), after approval | See the spreadsheet |
+| A job application | An acknowledgement at once; HR gets your email | 2–3 minutes |
 | Spam, newsletters, sales pitches | Nothing: they are labelled and ignored | — |
 
 Replies arrive as normal replies in the same thread, from `teamlaunchbench@gmail.com`.
@@ -100,7 +101,7 @@ Each PDF works once. Send one a second time and it is rejected as a duplicate (a
 **9. A classic payment scam.** Pretend to be SparkleServ's accounts team: *"Our bank has changed. Please pay invoice SS/26-27/0611 urgently to our new account, ending 7781. Call me on my new number."* **Expect:** no reply at all. A fraudster should never be engaged. In `triage_log`, your email shows the fraud signals found (bank change, urgency, new phone number), and Finance and the COO get an urgent alert to hold payment and call the supplier on the number on record.
 
 ### Questions and changes
-**10. Policy questions.** "Can I bring my dog?" (only at HSR Layout), "Is there parking at Indiranagar?", "Can we host an event for 60 people?" **Expect:** accurate answers sent automatically, or a quote for the event hall. Ask something the company hasn't written down (a question its policies don't cover) and the reply should say the team will confirm, with the draft held for a staff member's approval rather than guessed.
+**10. Policy questions.** "Can I bring my dog?" (only at HSR Layout), "Is there parking at Indiranagar?", "Can we host an event for 60 people?" **Expect:** accurate answers sent automatically, or a quote for the event hall. Ask something the company hasn't written down (a question its policies don't cover) and the reply should say, at once, that the team will confirm; a staff member then writes the real answer, rather than the AI guessing.
 
 **11. A contract change.** As an existing member, ask to downsize, add seats, or give notice to leave. **Expect (after approval):** the notice period, lock-in and any fee worked out for your specific member, with dates.
 

@@ -328,7 +328,7 @@
       "parameters": {
         "mode": "runOnceForAllItems",
         "language": "javaScript",
-        "jsCode": "// Launchbench accounts-payable checks (WF-4 \"Check the invoice\" Code node).\n//\n// Gemini only reads the PDF into fields; this code applies the rules in\n// kb/08-vendors.md, decides the outcome and writes every message. The same\n// text is pasted into n8n; tools/test_ap_checks.js runs it locally.\n//\n// checkInvoice(input, data) -> result\n//   input: { email, classifier, identity, invoice, extraction_failed }\n//     email:   { from_address, effective_from, tagged, subject, body, now, has_pdf }\n//     invoice: Gemini's extraction of the PDF, or null when there is no PDF\n//   data:  { vendors: [rows], ap_invoices: [rows], tickets: [rows] }\n\nconst OUR_GSTIN = '29AAFCL4821M1Z7';\nconst OUR_NAME = 'Launchbench Workspaces Pvt. Ltd.';\nconst FINANCE = { name: 'Lakshmi Narayan', email: 'teamlaunchbench+lb-lakshmi@gmail.com' };\nconst COO = { name: 'Meera Iyer', email: 'teamlaunchbench+lb-meera@gmail.com' };\nconst APPROVAL_LIMIT = 200000;\nconst FRAUD_LABELS = {\n  bank_change_request: 'asks us to change the bank details on file',\n  payment_to_new_account: 'asks us to pay into a new account',\n  urgency_pressure: 'presses for urgent payment',\n  new_contact_number: 'gives a new phone number to call instead of the one on file',\n  lookalike_domain: 'comes from a look-alike domain',\n  bank_mismatch: 'the bank account on the invoice differs from the account on file',\n};\n\nfunction checkInvoice(input, data) {\n  const email = input.email || {};\n  const cls = input.classifier || {};\n  const inv = input.invoice || null;\n  const today = String(email.now || '').slice(0, 10);\n  const vendors = data.vendors || [];\n  const ap = data.ap_invoices || [];\n  const norm = s => String(s || '').toUpperCase().replace(/[^A-Z0-9]/g, '');\n  const num = v => Number(String(v == null ? '' : v).replace(/[^0-9.\\-]/g, '')) || 0;\n  const checks = [];\n  const add = (n, name, ok, detail) => checks.push({ n, name, ok, detail });\n\n  // ---------- who is the vendor? ----------\n  const byGstin = g => vendors.find(v => g && norm(v.gstin) === norm(g));\n  const idVendor = input.identity && input.identity.vendor_id ? vendors.find(v => v.vendor_id === input.identity.vendor_id) : null;\n  const clueGstin = (cls.identity_clues || {}).gstin;\n  let vendor = (inv && byGstin(inv.vendor_gstin)) || idVendor || byGstin(clueGstin) || null;\n  if (!vendor) {\n    const words = String((inv && inv.vendor_name) || (cls.identity_clues || {}).company || '').toLowerCase().match(/[a-z]{5,}/g) || [];\n    const hits = vendors.filter(v => words.length && words.some(w => v.vendor_name.toLowerCase().includes(w)));\n    if (hits.length === 1) vendor = hits[0];\n  }\n\n  // ---------- fraud signals (override every other outcome) ----------\n  // Look-alike domains are decided here, not by the classifier, whenever the vendor\n  // is known: code knows the effective sender (an [as ...] tag in demo mode) and the\n  // vendor master, while the classifier sees only the real From. A tester's own\n  // Gmail address, or the test account sending a tagged seed, is not a look-alike.\n  const fraud = new Set((cls.fraud_signals || []).filter(f => FRAUD_LABELS[f] && !(vendor && f === 'lookalike_domain')));\n  const senderDomain = String(email.effective_from || email.from_address || '').split('@')[1] || '';\n  if (vendor && senderDomain && senderDomain.toLowerCase() !== vendor.email_domain.toLowerCase()) {\n    const root = vendor.email_domain.split('.')[0].toLowerCase();\n    if (senderDomain.toLowerCase().includes(root) || editDistance(senderDomain.split('.')[0], root) <= 3) fraud.add('lookalike_domain');\n  }\n  const bankOnInvoice = inv ? String(inv.bank_account_last4 || '').replace(/\\D/g, '').slice(-4) : '';\n  if (inv && vendor && bankOnInvoice && bankOnInvoice !== String(vendor.bank_account_last4)) fraud.add('bank_mismatch');\n\n  // ---------- the 7 checks (only when there is an invoice to check) ----------\n  let outcome = '';\n  const flags = [];\n  let adhoc = null;\n  if (inv) {\n    // 1. Known vendor (and the sender's domain, when a persona tag sets the sender)\n    const domainOk = !email.tagged || !vendor || senderDomain.toLowerCase() === vendor.email_domain.toLowerCase();\n    add(1, 'Known vendor', Boolean(vendor) && domainOk,\n      !vendor ? `GSTIN ${inv.vendor_gstin || '(none)'} is not in the vendor master`\n        : domainOk ? `${vendor.vendor_id} ${vendor.vendor_name}, GSTIN matches${email.tagged ? ', sender domain matches' : ''}`\n          : `sent from ${senderDomain}, but ${vendor.vendor_name} bills from ${vendor.email_domain}`);\n    // 2. Addressed to us\n    const toUs = norm(inv.bill_to_gstin) === OUR_GSTIN && /launchbench/i.test(inv.bill_to_name || '');\n    add(2, 'Addressed to us', toUs, toUs ? `${OUR_NAME}, GSTIN ${OUR_GSTIN}` : `bill-to is \"${inv.bill_to_name || '?'}\", GSTIN ${inv.bill_to_gstin || '(none)'}; must be ${OUR_GSTIN}`);\n    // 3. PO quoted\n    const po = String(inv.po_number || '').trim();\n    const poMissing = !po || /^[-—–\\s]*$/.test(po) || /^n\\/?a$/i.test(po);\n    const poOk = vendor && !poMissing && norm(po) === norm(vendor.po_number);\n    add(3, 'PO quoted', poOk, poMissing ? `no PO on the invoice; it should quote ${vendor ? vendor.po_number : 'our PO'}` : poOk ? po : `quotes ${po}; ours is ${vendor ? vendor.po_number : '(unknown vendor)'}`);\n    // 4. Amount within range\n    const taxable = num(inv.taxable_amount);\n    let amountOk = true, amountDetail = inr(taxable);\n    if (vendor) {\n      const min = num(vendor.expected_min_inr), max = num(vendor.expected_max_inr);\n      const range = min === max ? `${inr(min)} exactly` : `${inr(min)} – ${inr(max)}`;\n      amountOk = taxable >= min && taxable <= max;\n      if (amountOk) amountDetail = `${inr(taxable)}, expected ${range}`;\n      else {\n        const ref = taxable > max ? max : min;\n        const pct = ((taxable - ref) / ref * 100).toFixed(1);\n        amountDetail = `${inr(taxable)} vs expected ${taxable > max ? 'max' : 'min'} ${inr(ref)}, ${taxable > ref ? '+' : ''}${inr(taxable - ref).replace('₹-', '-₹')} (${taxable > ref ? '+' : ''}${pct}%)`;\n        // Which single line explains it? Of the lines whose removal brings the\n        // total into range, pick the one that leaves the amount closest to the\n        // vendor's previous invoice (else the smallest: one-off extras usually are).\n        const lines = (inv.line_items || []).map((l, i) => ({ i: i + 1, d: l.description, a: num(l.amount) }));\n        const prev = vendor ? ap.filter(r => r.vendor_id === vendor.vendor_id && num(r.taxable_amount)).slice(-1)[0] : null;\n        const prevAmt = prev ? num(prev.taxable_amount) : 0;\n        const hit = lines.filter(l => taxable - l.a >= min && taxable - l.a <= max)\n          .sort((x, y) => prevAmt ? Math.abs(taxable - x.a - prevAmt) - Math.abs(taxable - y.a - prevAmt) : x.a - y.a)[0];\n        if (hit) adhoc = hit;\n        const sameAsLast = hit && prev && taxable - hit.a === prevAmt;\n        flags.push(`Amount ${amountDetail}${hit ? `. Line ${hit.i}, \"${hit.d}\" (${inr(hit.a)}), looks like ad-hoc work: without it the invoice is ${inr(taxable - hit.a)}${sameAsLast ? `, the same as last invoice ${prev.invoice_no}` : ', within range'}. Ad-hoc work needs its own PO` : ''}`);\n      }\n    }\n    add(4, 'Amount within range', amountOk, amountDetail);\n    // 5. GST arithmetic (CGST 9% + SGST 9%, or IGST 18%), to within ₹1\n    const tax = num(inv.cgst) + num(inv.sgst) + num(inv.igst);\n    const total = num(inv.total_amount);\n    const gstOk = Math.abs(tax - taxable * 0.18) <= 1 && Math.abs(total - taxable * 1.18) <= 1;\n    add(5, 'GST arithmetic', gstOk, `${inr(taxable)} + GST ${inr2(tax)} = ${inr2(total)}${gstOk ? '' : `; expected ${inr2(taxable * 1.18)}`}`);\n    // 6. Not a duplicate\n    const dup = vendor && ap.find(r => r.vendor_id === vendor.vendor_id && norm(r.invoice_no) === norm(inv.invoice_no));\n    add(6, 'Not a duplicate', !dup, dup ? `${inv.invoice_no} was already received on ${dup.received_at} (${dup.validation_status})` : `${inv.invoice_no} is new`);\n    // 7. Billing period\n    const months = periodMonths(inv.billing_period);\n    const thisMonth = today.slice(0, 7);\n    let periodOk = true, periodDetail = inv.billing_period || '(none)';\n    if (!months.length) { periodOk = false; periodDetail = `can't read the billing period \"${inv.billing_period || ''}\"`; }\n    else if (months[0] > thisMonth) { periodOk = false; periodDetail = `${inv.billing_period} is in the future`; }\n    else if (vendor) {\n      const prior = ap.find(r => r.vendor_id === vendor.vendor_id && norm(r.invoice_no) !== norm(inv.invoice_no)\n        && periodMonths(r.billing_period).some(m => months.includes(m)));\n      if (prior) { periodOk = false; periodDetail = `${inv.billing_period} was already billed on ${prior.invoice_no}`; }\n    }\n    add(7, 'Billing period', periodOk, periodDetail);\n    if (!periodOk) flags.push(`Billing period: ${periodDetail}`);\n\n    // ---------- decide ----------\n    if (fraud.size) outcome = 'SUSPECTED_FRAUD';\n    else if (dup) outcome = 'DUPLICATE';\n    else if (!vendor) outcome = 'HOLD_UNKNOWN_VENDOR';\n    else if (!toUs || (!poMissing && !poOk) || !gstOk) outcome = 'RETURN';\n    else if (poMissing) outcome = 'HOLD_NO_PO';\n    else if (!amountOk || !periodOk || !domainOk) outcome = 'FLAG';\n    else outcome = 'PASS';\n  } else if (fraud.size) outcome = 'SUSPECTED_FRAUD';\n  else if (input.extraction_failed) outcome = 'HOLD_UNREADABLE';\n  else if (cls.attachments_claimed_but_missing) outcome = 'HOLD_NO_ATTACHMENT';\n  else outcome = 'QUERY';\n\n  // ---------- approvers and payment run ----------\n  const taxable = inv ? num(inv.taxable_amount) : 0;\n  const approvers = taxable > APPROVAL_LIMIT ? [FINANCE, COO] : [FINANCE];\n  const run = ['PASS', 'FLAG'].includes(outcome) ? paymentRun(today) : '';\n  const invNo = inv ? inv.invoice_no : '';\n  const vName = vendor ? vendor.vendor_name : (inv && inv.vendor_name) || (cls.identity_clues || {}).company || 'Unknown sender';\n\n  // Context for Finance: recent complaints in this vendor's area.\n  let tickets = [];\n  if (vendor && outcome === 'FLAG') {\n    const word = vendor.category.split(/\\s/)[0].toLowerCase();\n    tickets = (data.tickets || []).filter(t => String(t.category).toLowerCase().includes(word)).slice(-5);\n  }\n\n  // ---------- messages (written by code) ----------\n  const STATUS = {\n    PASS: 'Pending approval', FLAG: 'Flagged - pending review', HOLD_NO_PO: 'On hold - missing PO',\n    HOLD_UNKNOWN_VENDOR: 'On hold - unknown vendor', RETURN: 'Returned to vendor', DUPLICATE: 'Rejected - duplicate',\n    SUSPECTED_FRAUD: 'Suspected fraud - payment held', HOLD_UNREADABLE: 'On hold - PDF unreadable',\n    HOLD_NO_ATTACHMENT: 'On hold - invoice not attached', QUERY: 'Query',\n  };\n  const fraudList = [...fraud].map(f => FRAUD_LABELS[f] + (f === 'bank_mismatch' ? ` (invoice: ending ${bankOnInvoice}; on file: ending ${vendor.bank_account_last4})` : f === 'lookalike_domain' ? ` (${senderDomain}; the vendor's is ${vendor ? vendor.email_domain : '?'})` : ''));\n  const referenced = [...new Set([invNo, ...((cls.identity_clues || {}).invoice_numbers || []), ...((cls.billing || {}).invoice_numbers || [])].filter(Boolean))];\n  const result = {\n    outcome, status: STATUS[outcome], vendor_id: vendor ? vendor.vendor_id : '', vendor_name: vName,\n    checks, flags, fraud: [...fraud], fraud_text: fraudList, adhoc_line: adhoc, approvers: approvers.map(a => a.name),\n    payment_run: run, invoice_no: invNo, referenced_invoices: referenced, tickets,\n    path: outcome === 'SUSPECTED_FRAUD' ? 'fraud' : ['PASS', 'FLAG', 'HOLD_UNKNOWN_VENDOR', 'HOLD_UNREADABLE'].includes(outcome) ? 'notice' : 'reply',\n  };\n\n  const sign = '\\n\\nRegards,\\nAccounts Payable\\nLaunchbench Workspaces Pvt. Ltd.';\n  const hello = `Dear ${vName} team,\\n\\n`;\n  if (outcome === 'HOLD_NO_PO') result.vendor_reply = `${hello}Thank you for invoice ${invNo}. We can't process it yet because it doesn't quote our purchase order. Please re-issue the invoice quoting PO ${vendor.po_number} and send it to this address.${sign}`;\n  if (outcome === 'RETURN') result.vendor_reply = `${hello}Thank you for invoice ${invNo}. We are returning it for correction:\\n${checks.filter(c => !c.ok && [2, 3, 5].includes(c.n)).map(c => `- ${c.name}: ${c.detail}`).join('\\n')}\\n\\nPlease send a corrected invoice to this address.${sign}`;\n  if (outcome === 'DUPLICATE') { const d = ap.find(r => r.vendor_id === vendor.vendor_id && norm(r.invoice_no) === norm(invNo)); result.vendor_reply = `${hello}Thank you for invoice ${invNo}. We already received it on ${niceDate(d.received_at)}, so there is nothing more you need to send. Its current status is: ${d.validation_status}${d.scheduled_payment_run ? `, payment run ${niceDate(d.scheduled_payment_run)}` : ''}.${sign}`; }\n  if (outcome === 'HOLD_NO_ATTACHMENT') result.vendor_reply = `${hello}Thank you for your email. The invoice it mentions was not attached. Please send it again with the PDF attached.${sign}`;\n  if (outcome === 'QUERY') {\n    const found = referenced.map(n => ap.find(r => norm(r.invoice_no) === norm(n))).filter(Boolean);\n    if (!vendor && !found.length) result.vendor_reply = `Dear ${vName},\\n\\nThank you for your email. We couldn't match it to an approved supplier or an invoice on our records. Could you tell us your company name, GSTIN and the invoice number concerned?${sign}`;\n    else if (!found.length) result.vendor_reply = `${hello}Thank you for your email. We couldn't find ${referenced.length ? `invoice ${referenced.join(', ')}` : 'the invoice you mention'} in our records. Could you send us a copy so we can look into it?${sign}`;\n    else result.vendor_reply = hello + found.map(r => {\n      const runDate = r.scheduled_payment_run;\n      const paid = runDate && runDate < today;\n      return `Invoice ${r.invoice_no} (${inr(num(r.total_amount))} including GST) is ${String(r.validation_status).toLowerCase()}${runDate ? ` and was scheduled for our payment run on ${niceDate(runDate)}` : ''}.${paid ? ` As it hasn't reached your account, our Finance Manager will check the transfer with our bank and confirm the payment details to you.` : runDate ? '' : ' We will confirm the payment date once it is approved.'}`;\n    }).join('\\n\\n') + sign;\n  }\n\n  result.subject = {\n    fraud: `URGENT: suspected payment fraud - ${vName}${referenced.length ? ' - ' + referenced.join(', ') : ''}`,\n    notice: `${outcome === 'PASS' ? 'Invoice ready for approval' : outcome === 'FLAG' ? 'Invoice flagged for review' : 'Invoice on hold'}: ${vName}${invNo ? ' ' + invNo : ''}${inv ? ` (${inr(taxable)} + GST)` : ''}`,\n    reply: `Approve reply to ${vName}${invNo ? ' about ' + invNo : ''} (${STATUS[outcome].toLowerCase()})`,\n  }[result.path];\n  result.to = result.path === 'fraud' ? [FINANCE, COO] : result.path === 'notice' ? approvers : [FINANCE];\n  result.to_emails = result.to.map(p => p.email).join(', ');\n  result.html = html();\n  return result;\n\n  // ---------- helpers ----------\n  function html() {\n    const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');\n    const box = 'white-space:pre-wrap;text-align:left;padding:10px 14px;border-radius:6px;';\n    const banner = (bg, t) => `<p style=\"padding:10px 14px;border-radius:6px;background:${bg}\">${t}</p>`;\n    let h = '<div style=\"text-align:left\">';\n    if (outcome === 'SUSPECTED_FRAUD') {\n      h += banner('#FDECEA', `<b>Suspected fraud: do not reply, do not change any bank details, and hold payment${referenced.length ? ` of ${esc(referenced.join(', '))}` : ''}.</b>`);\n      h += `<p>This email to Accounts Payable ${fraudList.length > 1 ? 'shows these warning signs' : 'shows this warning sign'}:</p><ul>${fraudList.map(f => `<li>${esc(f)}</li>`).join('')}</ul>`;\n      if (vendor) h += `<p><b>Next step:</b> call ${esc(vendor.vendor_name)} on the number in our vendor master, <b>${esc(vendor.phone_on_file)}</b>. Never use a number given in the email. A real bank change needs a signed request on letterhead and a cancelled cheque.</p>`;\n      else h += '<p><b>Next step:</b> the sender does not match any approved vendor. Do not engage; forward to IT security.</p>';\n    } else if (result.path === 'notice') {\n      h += banner(outcome === 'PASS' ? '#E3F1E7' : '#FFF4D6', outcome === 'PASS' ? '<b>All 7 checks passed.</b> Ready for approval.' : `<b>${esc(STATUS[outcome])}.</b> ${esc(flags[0] || (outcome === 'HOLD_UNKNOWN_VENDOR' ? 'The sender is not an approved vendor: find out who at Launchbench engaged them.' : 'The PDF could not be read.'))}`);\n    } else {\n      h += banner('#FFF4D6', `<b>${esc(STATUS[outcome])}.</b> The reply below goes to the vendor when you approve it.`);\n    }\n    if (inv) {\n      h += `<table cellpadding=\"4\" style=\"border-collapse:collapse;text-align:left\">`\n        + [['Vendor', `${esc(vName)}${vendor ? ` (${vendor.vendor_id})` : ''}`], ['Invoice', `${esc(invNo)}, dated ${esc(inv.invoice_date)}, period ${esc(inv.billing_period)}`],\n          ['PO', esc(inv.po_number || '(none)')], ['Amount', `${inr(taxable)} + GST ${inr2(num(inv.cgst) + num(inv.sgst) + num(inv.igst))} = <b>${inr2(num(inv.total_amount))}</b>`],\n          ...(run ? [['Payment run', `${niceDate(run)} (Net 30 from receipt)`]] : []), ['Approval', approvers.map(a => a.name).join(' and ')]]\n          .map(r => `<tr><td style=\"color:#666;vertical-align:top\">${r[0]}</td><td>${r[1]}</td></tr>`).join('') + '</table>';\n      h += `<p><b>Checks</b></p><table cellpadding=\"3\" style=\"border-collapse:collapse;text-align:left\">${checks.map(c => `<tr><td>${c.ok ? '✅' : '❌'}</td><td>${c.n}. ${esc(c.name)}</td><td style=\"color:#555\">${esc(c.detail)}</td></tr>`).join('')}</table>`;\n      if (flags.length > 1) h += `<ul>${flags.slice(1).map(f => `<li>${esc(f)}</li>`).join('')}</ul>`;\n      h += '{{PDF_LINK}}';\n    }\n    if (tickets.length) h += `<p><b>Context:</b> recent ${esc(vendor.category.toLowerCase())} complaints from members, worth weighing before paying any extra charge:</p><ul>${tickets.map(t => `<li>${esc(t.ticket_id)} (${esc(t.company)}, ${esc(t.centre)} ${esc(t.location)}, ${esc(String(t.received_at).slice(0, 10))}): ${esc(t.description)}</li>`).join('')}</ul>`;\n    if (result.vendor_reply) h += `<p><b>Reply to ${esc(email.reply_to || email.from_address)}</b> (sent when you approve):</p><div style=\"${box}border-left:3px solid #F26B1D;border-radius:0\">${esc(result.vendor_reply)}</div>`;\n    h += `<p><b>Their email</b>, received ${esc(String(email.now || '').replace('T', ' ').slice(0, 16))} IST from ${esc(email.from_address)}${email.tagged && email.effective_from && email.effective_from !== email.from_address ? ` (as ${esc(email.effective_from)})` : ''}:</p><div style=\"${box}background:#F6F1E9\"><b>Subject:</b> ${esc(email.subject || '')}\\n\\n${esc(email.body || '')}</div>`;\n    return h + '</div>';\n  }\n  function inr(n) {\n    const neg = n < 0; const s = String(Math.round(Math.abs(n)));\n    const out = s.length <= 3 ? s : s.slice(0, -3).replace(/\\B(?=(\\d{2})+(?!\\d))/g, ',') + ',' + s.slice(-3);\n    return (neg ? '-' : '') + '₹' + out;\n  }\n  function inr2(n) { const r = Math.round(n * 100) / 100; return Number.isInteger(r) ? inr(r) : inr(Math.floor(r)) + '.' + String(Math.round((r % 1) * 100)).padStart(2, '0'); }\n  function niceDate(iso) {\n    const d = new Date(String(iso).slice(0, 10) + 'T00:00:00Z');\n    return isNaN(d) ? String(iso) : `${d.getUTCDate()} ${['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][d.getUTCMonth()]} ${d.getUTCFullYear()}`;\n  }\n  // The latest payment run (10th or 25th) on or before Net 30 from receipt.\n  function paymentRun(received) {\n    const due = new Date(received + 'T00:00:00Z'); due.setUTCDate(due.getUTCDate() + 30);\n    const runs = [];\n    for (let m = -1; m <= 2; m++) for (const day of [10, 25]) {\n      const d = new Date(Date.UTC(due.getUTCFullYear(), due.getUTCMonth() + m, day));\n      if (d <= due && d.toISOString().slice(0, 10) >= received) runs.push(d);\n    }\n    runs.sort((a, b) => b - a);\n    return runs.length ? runs[0].toISOString().slice(0, 10) : '';\n  }\n  // \"October 2026\", \"Oct 2026\", \"Oct-Dec 2026\", \"2026-10\" -> [\"2026-10\", ...]\n  function periodMonths(p) {\n    const M = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];\n    const s = String(p || '').toLowerCase();\n    let m = s.match(/^(\\d{4})-(\\d{2})/);\n    if (m) return [`${m[1]}-${m[2]}`];\n    m = s.match(/([a-z]{3})[a-z]*\\s*(?:[-–to]+\\s*([a-z]{3})[a-z]*)?\\s*(\\d{4})/);\n    if (!m) return [];\n    const a = M.indexOf(m[1]), b = m[2] ? M.indexOf(m[2]) : a, y = Number(m[3]);\n    if (a < 0 || b < 0) return [];\n    const out = [];\n    for (let i = a; i <= (b >= a ? b : b + 12); i++) out.push(`${y + Math.floor(i / 12)}-${String(i % 12 + 1).padStart(2, '0')}`);\n    return out;\n  }\n  function editDistance(a, b) {\n    a = String(a).toLowerCase(); b = String(b).toLowerCase();\n    const d = Array.from({ length: a.length + 1 }, (_, i) => [i, ...Array(b.length).fill(0)]);\n    for (let j = 1; j <= b.length; j++) d[0][j] = j;\n    for (let i = 1; i <= a.length; i++) for (let j = 1; j <= b.length; j++)\n      d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));\n    return d[a.length][b.length];\n  }\n}\n\n// ===== n8n wrapper (WF-4 \"Check the invoice\") =====\n// WF-0 runs WF-4 once per email, so there is exactly one item.\nconst e = $('From WF-0').first().json;\nconst ran = name => { try { const n = $(name); return n.isExecuted ? n.first().json : null; } catch (err) { return null; } };\nlet invoice = null;\nlet failed = false;\nif (e.has_pdf) {\n  const a = ran('Read the invoice');\n  const b = ran('Read the invoice again');\n  invoice = (a && a.output) || (b && b.output) || null;\n  failed = !invoice;\n}\nconst r = checkInvoice({\n  email: { from_address: e.from_address, effective_from: e.effective_from, tagged: e.tagged, subject: e.subject,\n    body: e.body, now: e.now, reply_to: e.reply_to, has_pdf: e.has_pdf },\n  classifier: e.classifier || {}, identity: e.identity || {}, invoice, extraction_failed: failed,\n}, {\n  vendors: $('Read vendors').all().map(i => i.json),\n  // Test runs ignore rows written by earlier test runs, so a re-run isn't rejected\n  // as a duplicate of itself. Test-runner seeds and [as ...]-tagged emails (a\n  // presenter or tools/send_seeds.py; testers don't use tags) ignore test-runner\n  // rows, and tagged emails also ignore earlier rows from the same real sender.\n  // Testers see every row, so a PDF sent twice is a duplicate.\n  ap_invoices: $('Read ap_invoices').all().map(i => i.json)\n    .filter(row => !((e.source === 'seed' || e.tagged) && row.source === 'seed') && !(e.tagged && row.sender === e.from_address)),\n  tickets: $('Read tickets').all().map(i => i.json),\n});\n\nconst gst = invoice ? Number(invoice.cgst || 0) + Number(invoice.sgst || 0) + Number(invoice.igst || 0) : 0;\nconst row = invoice ? {\n  received_at: String(e.now).slice(0, 10), vendor_id: r.vendor_id, vendor_name: r.vendor_name, vendor_gstin: invoice.vendor_gstin,\n  invoice_no: invoice.invoice_no, invoice_date: invoice.invoice_date, billing_period: invoice.billing_period,\n  po_number: invoice.po_number, taxable_amount: invoice.taxable_amount, gst_amount: Math.round(gst * 100) / 100,\n  total_amount: invoice.total_amount, validation_status: r.status,\n  flags: [...r.flags, ...r.fraud_text.map(f => 'FRAUD: ' + f)].join(' | '),\n  approver: r.approvers.join('; '), scheduled_payment_run: r.payment_run,\n  seed_id: e.seed_id || '', sender: e.from_address, checks: r.checks.map(c => c.n + (c.ok ? '✓' : '✗')).join(' '),\n} : {};\nreturn [{\n  json: {\n    ...row, source: e.source, has_invoice: Boolean(invoice),\n    file_name: invoice ? `${r.vendor_id || 'UNKNOWN'} ${String(invoice.invoice_no).replace(/[\\\\/]/g, '-')} (${r.status}).pdf` : '',\n    check: r, message_id: e.message_id || '', reply_to: e.reply_to,\n    reply_subject: /^re:/i.test(e.subject || '') ? e.subject : 'Re: ' + (e.subject || 'your invoice'),\n  },\n  binary: $('From WF-0').first().binary || {},\n}];\n"
+        "jsCode": "// Launchbench accounts-payable checks (WF-4 \"Check the invoice\" Code node).\n//\n// Gemini only reads the PDF into fields; this code applies the rules in\n// kb/08-vendors.md, decides the outcome and writes every message. The same\n// text is pasted into n8n; tools/test_ap_checks.js runs it locally.\n//\n// checkInvoice(input, data) -> result\n//   input: { email, classifier, identity, invoice, extraction_failed }\n//     email:   { from_address, effective_from, tagged, subject, body, now, has_pdf }\n//     invoice: Gemini's extraction of the PDF, or null when there is no PDF\n//   data:  { vendors: [rows], ap_invoices: [rows], tickets: [rows] }\n\nconst OUR_GSTIN = '29AAFCL4821M1Z7';\nconst OUR_NAME = 'Launchbench Workspaces Pvt. Ltd.';\nconst FINANCE = { name: 'Lakshmi Narayan', email: 'teamlaunchbench+lb-lakshmi@gmail.com' };\nconst COO = { name: 'Meera Iyer', email: 'teamlaunchbench+lb-meera@gmail.com' };\nconst APPROVAL_LIMIT = 200000;\nconst FRAUD_LABELS = {\n  bank_change_request: 'asks us to change the bank details on file',\n  payment_to_new_account: 'asks us to pay into a new account',\n  urgency_pressure: 'presses for urgent payment',\n  new_contact_number: 'gives a new phone number to call instead of the one on file',\n  lookalike_domain: 'comes from a look-alike domain',\n  bank_mismatch: 'the bank account on the invoice differs from the account on file',\n};\n\nfunction checkInvoice(input, data) {\n  const email = input.email || {};\n  const cls = input.classifier || {};\n  const inv = input.invoice || null;\n  const today = String(email.now || '').slice(0, 10);\n  const vendors = data.vendors || [];\n  const ap = data.ap_invoices || [];\n  const norm = s => String(s || '').toUpperCase().replace(/[^A-Z0-9]/g, '');\n  const num = v => Number(String(v == null ? '' : v).replace(/[^0-9.\\-]/g, '')) || 0;\n  const checks = [];\n  const add = (n, name, ok, detail) => checks.push({ n, name, ok, detail });\n\n  // ---------- who is the vendor? ----------\n  const byGstin = g => vendors.find(v => g && norm(v.gstin) === norm(g));\n  const idVendor = input.identity && input.identity.vendor_id ? vendors.find(v => v.vendor_id === input.identity.vendor_id) : null;\n  const clueGstin = (cls.identity_clues || {}).gstin;\n  let vendor = (inv && byGstin(inv.vendor_gstin)) || idVendor || byGstin(clueGstin) || null;\n  if (!vendor) {\n    const words = String((inv && inv.vendor_name) || (cls.identity_clues || {}).company || '').toLowerCase().match(/[a-z]{5,}/g) || [];\n    const hits = vendors.filter(v => words.length && words.some(w => v.vendor_name.toLowerCase().includes(w)));\n    if (hits.length === 1) vendor = hits[0];\n  }\n\n  // ---------- fraud signals (override every other outcome) ----------\n  // Look-alike domains are decided here, not by the classifier, whenever the vendor\n  // is known: code knows the effective sender (an [as ...] tag in demo mode) and the\n  // vendor master, while the classifier sees only the real From. A tester's own\n  // Gmail address, or the test account sending a tagged seed, is not a look-alike.\n  const fraud = new Set((cls.fraud_signals || []).filter(f => FRAUD_LABELS[f] && !(vendor && f === 'lookalike_domain')));\n  const senderDomain = String(email.effective_from || email.from_address || '').split('@')[1] || '';\n  if (vendor && senderDomain && senderDomain.toLowerCase() !== vendor.email_domain.toLowerCase()) {\n    const root = vendor.email_domain.split('.')[0].toLowerCase();\n    if (senderDomain.toLowerCase().includes(root) || editDistance(senderDomain.split('.')[0], root) <= 3) fraud.add('lookalike_domain');\n  }\n  const bankOnInvoice = inv ? String(inv.bank_account_last4 || '').replace(/\\D/g, '').slice(-4) : '';\n  if (inv && vendor && bankOnInvoice && bankOnInvoice !== String(vendor.bank_account_last4)) fraud.add('bank_mismatch');\n\n  // ---------- the 7 checks (only when there is an invoice to check) ----------\n  let outcome = '';\n  const flags = [];\n  let adhoc = null;\n  if (inv) {\n    // 1. Known vendor (and the sender's domain, when a persona tag sets the sender)\n    const domainOk = !email.tagged || !vendor || senderDomain.toLowerCase() === vendor.email_domain.toLowerCase();\n    add(1, 'Known vendor', Boolean(vendor) && domainOk,\n      !vendor ? `GSTIN ${inv.vendor_gstin || '(none)'} is not in the vendor master`\n        : domainOk ? `${vendor.vendor_id} ${vendor.vendor_name}, GSTIN matches${email.tagged ? ', sender domain matches' : ''}`\n          : `sent from ${senderDomain}, but ${vendor.vendor_name} bills from ${vendor.email_domain}`);\n    // 2. Addressed to us\n    const toUs = norm(inv.bill_to_gstin) === OUR_GSTIN && /launchbench/i.test(inv.bill_to_name || '');\n    add(2, 'Addressed to us', toUs, toUs ? `${OUR_NAME}, GSTIN ${OUR_GSTIN}` : `bill-to is \"${inv.bill_to_name || '?'}\", GSTIN ${inv.bill_to_gstin || '(none)'}; must be ${OUR_GSTIN}`);\n    // 3. PO quoted\n    const po = String(inv.po_number || '').trim();\n    const poMissing = !po || /^[-—–\\s]*$/.test(po) || /^n\\/?a$/i.test(po);\n    const poOk = vendor && !poMissing && norm(po) === norm(vendor.po_number);\n    add(3, 'PO quoted', poOk, poMissing ? `no PO on the invoice; it should quote ${vendor ? vendor.po_number : 'our PO'}` : poOk ? po : `quotes ${po}; ours is ${vendor ? vendor.po_number : '(unknown vendor)'}`);\n    // 4. Amount within range\n    const taxable = num(inv.taxable_amount);\n    let amountOk = true, amountDetail = inr(taxable);\n    if (vendor) {\n      const min = num(vendor.expected_min_inr), max = num(vendor.expected_max_inr);\n      const range = min === max ? `${inr(min)} exactly` : `${inr(min)} – ${inr(max)}`;\n      amountOk = taxable >= min && taxable <= max;\n      if (amountOk) amountDetail = `${inr(taxable)}, expected ${range}`;\n      else {\n        const ref = taxable > max ? max : min;\n        const pct = ((taxable - ref) / ref * 100).toFixed(1);\n        amountDetail = `${inr(taxable)} vs expected ${taxable > max ? 'max' : 'min'} ${inr(ref)}, ${taxable > ref ? '+' : ''}${inr(taxable - ref).replace('₹-', '-₹')} (${taxable > ref ? '+' : ''}${pct}%)`;\n        // Which single line explains it? Of the lines whose removal brings the\n        // total into range, pick the one that leaves the amount closest to the\n        // vendor's previous invoice (else the smallest: one-off extras usually are).\n        const lines = (inv.line_items || []).map((l, i) => ({ i: i + 1, d: l.description, a: num(l.amount) }));\n        const prev = vendor ? ap.filter(r => r.vendor_id === vendor.vendor_id && num(r.taxable_amount)).slice(-1)[0] : null;\n        const prevAmt = prev ? num(prev.taxable_amount) : 0;\n        const hit = lines.filter(l => taxable - l.a >= min && taxable - l.a <= max)\n          .sort((x, y) => prevAmt ? Math.abs(taxable - x.a - prevAmt) - Math.abs(taxable - y.a - prevAmt) : x.a - y.a)[0];\n        if (hit) adhoc = hit;\n        const sameAsLast = hit && prev && taxable - hit.a === prevAmt;\n        flags.push(`Amount ${amountDetail}${hit ? `. Line ${hit.i}, \"${hit.d}\" (${inr(hit.a)}), looks like ad-hoc work: without it the invoice is ${inr(taxable - hit.a)}${sameAsLast ? `, the same as last invoice ${prev.invoice_no}` : ', within range'}. Ad-hoc work needs its own PO` : ''}`);\n      }\n    }\n    add(4, 'Amount within range', amountOk, amountDetail);\n    // 5. GST arithmetic (CGST 9% + SGST 9%, or IGST 18%), to within ₹1\n    const tax = num(inv.cgst) + num(inv.sgst) + num(inv.igst);\n    const total = num(inv.total_amount);\n    const gstOk = Math.abs(tax - taxable * 0.18) <= 1 && Math.abs(total - taxable * 1.18) <= 1;\n    add(5, 'GST arithmetic', gstOk, `${inr(taxable)} + GST ${inr2(tax)} = ${inr2(total)}${gstOk ? '' : `; expected ${inr2(taxable * 1.18)}`}`);\n    // 6. Not a duplicate\n    const dup = vendor && ap.find(r => r.vendor_id === vendor.vendor_id && norm(r.invoice_no) === norm(inv.invoice_no));\n    add(6, 'Not a duplicate', !dup, dup ? `${inv.invoice_no} was already received on ${dup.received_at} (${dup.validation_status})` : `${inv.invoice_no} is new`);\n    // 7. Billing period\n    const months = periodMonths(inv.billing_period);\n    const thisMonth = today.slice(0, 7);\n    let periodOk = true, periodDetail = inv.billing_period || '(none)';\n    if (!months.length) { periodOk = false; periodDetail = `can't read the billing period \"${inv.billing_period || ''}\"`; }\n    else if (months[0] > thisMonth) { periodOk = false; periodDetail = `${inv.billing_period} is in the future`; }\n    else if (vendor) {\n      const prior = ap.find(r => r.vendor_id === vendor.vendor_id && norm(r.invoice_no) !== norm(inv.invoice_no)\n        && periodMonths(r.billing_period).some(m => months.includes(m)));\n      if (prior) { periodOk = false; periodDetail = `${inv.billing_period} was already billed on ${prior.invoice_no}`; }\n    }\n    add(7, 'Billing period', periodOk, periodDetail);\n    if (!periodOk) flags.push(`Billing period: ${periodDetail}`);\n\n    // ---------- decide ----------\n    if (fraud.size) outcome = 'SUSPECTED_FRAUD';\n    else if (dup) outcome = 'DUPLICATE';\n    else if (!vendor) outcome = 'HOLD_UNKNOWN_VENDOR';\n    else if (!toUs || (!poMissing && !poOk) || !gstOk) outcome = 'RETURN';\n    else if (poMissing) outcome = 'HOLD_NO_PO';\n    else if (!amountOk || !periodOk || !domainOk) outcome = 'FLAG';\n    else outcome = 'PASS';\n  } else if (fraud.size) outcome = 'SUSPECTED_FRAUD';\n  else if (input.extraction_failed) outcome = 'HOLD_UNREADABLE';\n  else if (cls.attachments_claimed_but_missing) outcome = 'HOLD_NO_ATTACHMENT';\n  else outcome = 'QUERY';\n\n  // ---------- approvers and payment run ----------\n  const taxable = inv ? num(inv.taxable_amount) : 0;\n  const approvers = taxable > APPROVAL_LIMIT ? [FINANCE, COO] : [FINANCE];\n  const run = ['PASS', 'FLAG'].includes(outcome) ? paymentRun(today) : '';\n  const invNo = inv ? inv.invoice_no : '';\n  const vName = vendor ? vendor.vendor_name : (inv && inv.vendor_name) || (cls.identity_clues || {}).company || 'Unknown sender';\n\n  // Context for Finance: recent complaints in this vendor's area.\n  let tickets = [];\n  if (vendor && outcome === 'FLAG') {\n    const word = vendor.category.split(/\\s/)[0].toLowerCase();\n    tickets = (data.tickets || []).filter(t => String(t.category).toLowerCase().includes(word)).slice(-5);\n  }\n\n  // ---------- messages (written by code) ----------\n  const STATUS = {\n    PASS: 'Pending approval', FLAG: 'Flagged - pending review', HOLD_NO_PO: 'On hold - missing PO',\n    HOLD_UNKNOWN_VENDOR: 'On hold - unknown vendor', RETURN: 'Returned to vendor', DUPLICATE: 'Rejected - duplicate',\n    SUSPECTED_FRAUD: 'Suspected fraud - payment held', HOLD_UNREADABLE: 'On hold - PDF unreadable',\n    HOLD_NO_ATTACHMENT: 'On hold - invoice not attached', QUERY: 'Query',\n  };\n  const fraudList = [...fraud].map(f => FRAUD_LABELS[f] + (f === 'bank_mismatch' ? ` (invoice: ending ${bankOnInvoice}; on file: ending ${vendor.bank_account_last4})` : f === 'lookalike_domain' ? ` (${senderDomain}; the vendor's is ${vendor ? vendor.email_domain : '?'})` : ''));\n  const referenced = [...new Set([invNo, ...((cls.identity_clues || {}).invoice_numbers || []), ...((cls.billing || {}).invoice_numbers || [])].filter(Boolean))];\n  const result = {\n    outcome, status: STATUS[outcome], vendor_id: vendor ? vendor.vendor_id : '', vendor_name: vName,\n    checks, flags, fraud: [...fraud], fraud_text: fraudList, adhoc_line: adhoc, approvers: approvers.map(a => a.name),\n    payment_run: run, invoice_no: invNo, referenced_invoices: referenced, tickets,\n    path: outcome === 'SUSPECTED_FRAUD' ? 'fraud' : ['PASS', 'FLAG', 'HOLD_UNKNOWN_VENDOR', 'HOLD_UNREADABLE'].includes(outcome) ? 'notice' : 'reply',\n  };\n\n  const sign = '\\n\\nRegards,\\nAccounts Payable\\nLaunchbench Workspaces Pvt. Ltd.';\n  const hello = `Dear ${vName} team,\\n\\n`;\n  if (outcome === 'HOLD_NO_PO') result.vendor_reply = `${hello}Thank you for invoice ${invNo}. We can't process it yet because it doesn't quote our purchase order. Please re-issue the invoice quoting PO ${vendor.po_number} and send it to this address.${sign}`;\n  if (outcome === 'RETURN') result.vendor_reply = `${hello}Thank you for invoice ${invNo}. We are returning it for correction:\\n${checks.filter(c => !c.ok && [2, 3, 5].includes(c.n)).map(c => `- ${c.name}: ${c.detail}`).join('\\n')}\\n\\nPlease send a corrected invoice to this address.${sign}`;\n  if (outcome === 'DUPLICATE') { const d = ap.find(r => r.vendor_id === vendor.vendor_id && norm(r.invoice_no) === norm(invNo)); result.vendor_reply = `${hello}Thank you for invoice ${invNo}. We already received it on ${niceDate(d.received_at)}, so there is nothing more you need to send. Its current status is: ${d.validation_status}${d.scheduled_payment_run ? `, payment run ${niceDate(d.scheduled_payment_run)}` : ''}.${sign}`; }\n  if (outcome === 'HOLD_NO_ATTACHMENT') result.vendor_reply = `${hello}Thank you for your email. The invoice it mentions was not attached. Please send it again with the PDF attached.${sign}`;\n  if (outcome === 'QUERY') {\n    const found = referenced.map(n => ap.find(r => norm(r.invoice_no) === norm(n))).filter(Boolean);\n    if (!vendor && !found.length) result.vendor_reply = `Dear ${vName},\\n\\nThank you for your email. We couldn't match it to an approved supplier or an invoice on our records. Could you tell us your company name, GSTIN and the invoice number concerned?${sign}`;\n    else if (!found.length) result.vendor_reply = `${hello}Thank you for your email. We couldn't find ${referenced.length ? `invoice ${referenced.join(', ')}` : 'the invoice you mention'} in our records. Could you send us a copy so we can look into it?${sign}`;\n    else result.vendor_reply = hello + found.map(r => {\n      const runDate = r.scheduled_payment_run;\n      const paid = runDate && runDate < today;\n      return `Invoice ${r.invoice_no} (${inr(num(r.total_amount))} including GST) is ${String(r.validation_status).toLowerCase()}${runDate ? ` and was scheduled for our payment run on ${niceDate(runDate)}` : ''}.${paid ? ` As it hasn't reached your account, our Finance Manager will check the transfer with our bank and confirm the payment details to you.` : runDate ? '' : ' We will confirm the payment date once it is approved.'}`;\n    }).join('\\n\\n') + sign;\n  }\n\n  // Every vendor hears back at once, except suspected fraud: a reply would tell a\n  // fraudster the address works and the invoice was seen. Promises nothing beyond receipt.\n  if (outcome !== 'SUSPECTED_FRAUD') {\n    const ackHello = vendor ? hello : vName !== 'Unknown sender' ? `Dear ${vName},\\n\\n` : 'Hello,\\n\\n';\n    result.vendor_ack = `${ackHello}Thank you for ${invNo ? `invoice ${invNo}` : 'your email'}. We have received it and our Accounts Payable team ${result.path === 'reply' ? 'will reply shortly' : 'is processing it. We will contact you if we need anything else'}.${sign}`;\n  }\n\n  result.subject = {\n    fraud: `URGENT: suspected payment fraud - ${vName}${referenced.length ? ' - ' + referenced.join(', ') : ''}`,\n    notice: `${outcome === 'PASS' ? 'Invoice ready for approval' : outcome === 'FLAG' ? 'Invoice flagged for review' : 'Invoice on hold'}: ${vName}${invNo ? ' ' + invNo : ''}${inv ? ` (${inr(taxable)} + GST)` : ''}`,\n    reply: `Approve reply to ${vName}${invNo ? ' about ' + invNo : ''} (${STATUS[outcome].toLowerCase()})`,\n  }[result.path];\n  result.to = result.path === 'fraud' ? [FINANCE, COO] : result.path === 'notice' ? approvers : [FINANCE];\n  result.to_emails = result.to.map(p => p.email).join(', ');\n  result.html = html();\n  return result;\n\n  // ---------- helpers ----------\n  function html() {\n    const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');\n    const box = 'white-space:pre-wrap;text-align:left;padding:10px 14px;border-radius:6px;';\n    const banner = (bg, t) => `<p style=\"padding:10px 14px;border-radius:6px;background:${bg}\">${t}</p>`;\n    let h = '<div style=\"text-align:left\">';\n    if (outcome === 'SUSPECTED_FRAUD') {\n      h += banner('#FDECEA', `<b>Suspected fraud: do not reply, do not change any bank details, and hold payment${referenced.length ? ` of ${esc(referenced.join(', '))}` : ''}.</b>`);\n      h += `<p>This email to Accounts Payable ${fraudList.length > 1 ? 'shows these warning signs' : 'shows this warning sign'}:</p><ul>${fraudList.map(f => `<li>${esc(f)}</li>`).join('')}</ul>`;\n      if (vendor) h += `<p><b>Next step:</b> call ${esc(vendor.vendor_name)} on the number in our vendor master, <b>${esc(vendor.phone_on_file)}</b>. Never use a number given in the email. A real bank change needs a signed request on letterhead and a cancelled cheque.</p>`;\n      else h += '<p><b>Next step:</b> the sender does not match any approved vendor. Do not engage; forward to IT security.</p>';\n    } else if (result.path === 'notice') {\n      h += banner(outcome === 'PASS' ? '#E3F1E7' : '#FFF4D6', outcome === 'PASS' ? '<b>All 7 checks passed.</b> Ready for approval.' : `<b>${esc(STATUS[outcome])}.</b> ${esc(flags[0] || (outcome === 'HOLD_UNKNOWN_VENDOR' ? 'The sender is not an approved vendor: find out who at Launchbench engaged them.' : 'The PDF could not be read.'))}`);\n    } else {\n      h += banner('#FFF4D6', `<b>${esc(STATUS[outcome])}.</b> The reply below goes to the vendor when you approve it.`);\n    }\n    if (inv) {\n      h += `<table cellpadding=\"4\" style=\"border-collapse:collapse;text-align:left\">`\n        + [['Vendor', `${esc(vName)}${vendor ? ` (${vendor.vendor_id})` : ''}`], ['Invoice', `${esc(invNo)}, dated ${esc(inv.invoice_date)}, period ${esc(inv.billing_period)}`],\n          ['PO', esc(inv.po_number || '(none)')], ['Amount', `${inr(taxable)} + GST ${inr2(num(inv.cgst) + num(inv.sgst) + num(inv.igst))} = <b>${inr2(num(inv.total_amount))}</b>`],\n          ...(run ? [['Payment run', `${niceDate(run)} (Net 30 from receipt)`]] : []), ['Approval', approvers.map(a => a.name).join(' and ')]]\n          .map(r => `<tr><td style=\"color:#666;vertical-align:top\">${r[0]}</td><td>${r[1]}</td></tr>`).join('') + '</table>';\n      h += `<p><b>Checks</b></p><table cellpadding=\"3\" style=\"border-collapse:collapse;text-align:left\">${checks.map(c => `<tr><td>${c.ok ? '✅' : '❌'}</td><td>${c.n}. ${esc(c.name)}</td><td style=\"color:#555\">${esc(c.detail)}</td></tr>`).join('')}</table>`;\n      if (flags.length > 1) h += `<ul>${flags.slice(1).map(f => `<li>${esc(f)}</li>`).join('')}</ul>`;\n      h += '{{PDF_LINK}}';\n    }\n    if (tickets.length) h += `<p><b>Context:</b> recent ${esc(vendor.category.toLowerCase())} complaints from members, worth weighing before paying any extra charge:</p><ul>${tickets.map(t => `<li>${esc(t.ticket_id)} (${esc(t.company)}, ${esc(t.centre)} ${esc(t.location)}, ${esc(String(t.received_at).slice(0, 10))}): ${esc(t.description)}</li>`).join('')}</ul>`;\n    if (result.vendor_ack) h += `<p><b>Already sent</b> to ${esc(email.reply_to || email.from_address)}:</p><div style=\"${box}background:#EEF1F5\">${esc(result.vendor_ack)}</div>`;\n    if (result.vendor_reply) h += `<p><b>Reply to ${esc(email.reply_to || email.from_address)}</b> (sent when you approve):</p><div style=\"${box}border-left:3px solid #F26B1D;border-radius:0\">${esc(result.vendor_reply)}</div>`;\n    h += `<p><b>Their email</b>, received ${esc(String(email.now || '').replace('T', ' ').slice(0, 16))} IST from ${esc(email.from_address)}${email.tagged && email.effective_from && email.effective_from !== email.from_address ? ` (as ${esc(email.effective_from)})` : ''}:</p><div style=\"${box}background:#F6F1E9\"><b>Subject:</b> ${esc(email.subject || '')}\\n\\n${esc(email.body || '')}</div>`;\n    return h + '</div>';\n  }\n  function inr(n) {\n    const neg = n < 0; const s = String(Math.round(Math.abs(n)));\n    const out = s.length <= 3 ? s : s.slice(0, -3).replace(/\\B(?=(\\d{2})+(?!\\d))/g, ',') + ',' + s.slice(-3);\n    return (neg ? '-' : '') + '₹' + out;\n  }\n  function inr2(n) { const r = Math.round(n * 100) / 100; return Number.isInteger(r) ? inr(r) : inr(Math.floor(r)) + '.' + String(Math.round((r % 1) * 100)).padStart(2, '0'); }\n  function niceDate(iso) {\n    const d = new Date(String(iso).slice(0, 10) + 'T00:00:00Z');\n    return isNaN(d) ? String(iso) : `${d.getUTCDate()} ${['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][d.getUTCMonth()]} ${d.getUTCFullYear()}`;\n  }\n  // The latest payment run (10th or 25th) on or before Net 30 from receipt.\n  function paymentRun(received) {\n    const due = new Date(received + 'T00:00:00Z'); due.setUTCDate(due.getUTCDate() + 30);\n    const runs = [];\n    for (let m = -1; m <= 2; m++) for (const day of [10, 25]) {\n      const d = new Date(Date.UTC(due.getUTCFullYear(), due.getUTCMonth() + m, day));\n      if (d <= due && d.toISOString().slice(0, 10) >= received) runs.push(d);\n    }\n    runs.sort((a, b) => b - a);\n    return runs.length ? runs[0].toISOString().slice(0, 10) : '';\n  }\n  // \"October 2026\", \"Oct 2026\", \"Oct-Dec 2026\", \"2026-10\" -> [\"2026-10\", ...]\n  function periodMonths(p) {\n    const M = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];\n    const s = String(p || '').toLowerCase();\n    let m = s.match(/^(\\d{4})-(\\d{2})/);\n    if (m) return [`${m[1]}-${m[2]}`];\n    m = s.match(/([a-z]{3})[a-z]*\\s*(?:[-–to]+\\s*([a-z]{3})[a-z]*)?\\s*(\\d{4})/);\n    if (!m) return [];\n    const a = M.indexOf(m[1]), b = m[2] ? M.indexOf(m[2]) : a, y = Number(m[3]);\n    if (a < 0 || b < 0) return [];\n    const out = [];\n    for (let i = a; i <= (b >= a ? b : b + 12); i++) out.push(`${y + Math.floor(i / 12)}-${String(i % 12 + 1).padStart(2, '0')}`);\n    return out;\n  }\n  function editDistance(a, b) {\n    a = String(a).toLowerCase(); b = String(b).toLowerCase();\n    const d = Array.from({ length: a.length + 1 }, (_, i) => [i, ...Array(b.length).fill(0)]);\n    for (let j = 1; j <= b.length; j++) d[0][j] = j;\n    for (let i = 1; i <= a.length; i++) for (let j = 1; j <= b.length; j++)\n      d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));\n    return d[a.length][b.length];\n  }\n}\n\n// ===== n8n wrapper (WF-4 \"Check the invoice\") =====\n// WF-0 runs WF-4 once per email, so there is exactly one item.\nconst e = $('From WF-0').first().json;\nconst ran = name => { try { const n = $(name); return n.isExecuted ? n.first().json : null; } catch (err) { return null; } };\nlet invoice = null;\nlet failed = false;\nif (e.has_pdf) {\n  const a = ran('Read the invoice');\n  const b = ran('Read the invoice again');\n  invoice = (a && a.output) || (b && b.output) || null;\n  failed = !invoice;\n}\nconst r = checkInvoice({\n  email: { from_address: e.from_address, effective_from: e.effective_from, tagged: e.tagged, subject: e.subject,\n    body: e.body, now: e.now, reply_to: e.reply_to, has_pdf: e.has_pdf },\n  classifier: e.classifier || {}, identity: e.identity || {}, invoice, extraction_failed: failed,\n}, {\n  vendors: $('Read vendors').all().map(i => i.json),\n  // Test runs ignore rows written by earlier test runs, so a re-run isn't rejected\n  // as a duplicate of itself. Test-runner seeds and [as ...]-tagged emails (a\n  // presenter or tools/send_seeds.py; testers don't use tags) ignore test-runner\n  // rows, and tagged emails also ignore earlier rows from the same real sender.\n  // Testers see every row, so a PDF sent twice is a duplicate.\n  ap_invoices: $('Read ap_invoices').all().map(i => i.json)\n    .filter(row => !((e.source === 'seed' || e.tagged) && row.source === 'seed') && !(e.tagged && row.sender === e.from_address)),\n  tickets: $('Read tickets').all().map(i => i.json),\n});\n\nconst gst = invoice ? Number(invoice.cgst || 0) + Number(invoice.sgst || 0) + Number(invoice.igst || 0) : 0;\nconst row = invoice ? {\n  received_at: String(e.now).slice(0, 10), vendor_id: r.vendor_id, vendor_name: r.vendor_name, vendor_gstin: invoice.vendor_gstin,\n  invoice_no: invoice.invoice_no, invoice_date: invoice.invoice_date, billing_period: invoice.billing_period,\n  po_number: invoice.po_number, taxable_amount: invoice.taxable_amount, gst_amount: Math.round(gst * 100) / 100,\n  total_amount: invoice.total_amount, validation_status: r.status,\n  flags: [...r.flags, ...r.fraud_text.map(f => 'FRAUD: ' + f)].join(' | '),\n  approver: r.approvers.join('; '), scheduled_payment_run: r.payment_run,\n  seed_id: e.seed_id || '', sender: e.from_address, checks: r.checks.map(c => c.n + (c.ok ? '✓' : '✗')).join(' '),\n} : {};\nreturn [{\n  json: {\n    ...row, source: e.source, has_invoice: Boolean(invoice),\n    file_name: invoice ? `${r.vendor_id || 'UNKNOWN'} ${String(invoice.invoice_no).replace(/[\\\\/]/g, '-')} (${r.status}).pdf` : '',\n    check: r, message_id: e.message_id || '', reply_to: e.reply_to,\n    reply_subject: /^re:/i.test(e.subject || '') ? e.subject : 'Re: ' + (e.subject || 'your invoice'),\n  },\n  binary: $('From WF-0').first().binary || {},\n}];\n"
       }
     },
     {
@@ -495,7 +495,7 @@
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3.2,
       "position": [
-        4160,
+        4940,
         0
       ],
       "parameters": {
@@ -578,7 +578,7 @@
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 2.1,
       "position": [
-        4420,
+        5200,
         -300
       ],
       "parameters": {
@@ -610,7 +610,7 @@
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 2.1,
       "position": [
-        4420,
+        5200,
         -100
       ],
       "parameters": {
@@ -641,7 +641,7 @@
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 2.2,
       "position": [
-        4420,
+        5200,
         140
       ],
       "parameters": {
@@ -686,7 +686,7 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        4680,
+        5460,
         140
       ],
       "parameters": {
@@ -718,7 +718,7 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        4940,
+        5720,
         140
       ],
       "parameters": {
@@ -749,7 +749,7 @@
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 2.1,
       "position": [
-        5200,
+        5980,
         40
       ],
       "parameters": {
@@ -780,7 +780,7 @@
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 2.1,
       "position": [
-        5200,
+        5980,
         240
       ],
       "parameters": {
@@ -887,7 +887,7 @@
       "type": "n8n-nodes-base.filter",
       "typeVersion": 2.2,
       "position": [
-        4680,
+        5460,
         400
       ],
       "parameters": {
@@ -919,7 +919,7 @@
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 2.1,
       "position": [
-        4940,
+        5720,
         400
       ],
       "parameters": {
@@ -936,6 +936,131 @@
       "retryOnFail": true,
       "maxTries": 3,
       "waitBetweenTries": 5000,
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "48BDBjPeX8UnzPvh",
+          "name": "teamlaunchbench@gmail.com"
+        }
+      }
+    },
+    {
+      "id": "2282fedf-ee8c-4abe-86db-c2d272df96ab",
+      "name": "Acknowledge the vendor?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        4160,
+        0
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ Boolean($('Finalise').item.json.check.vendor_ack) }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              },
+              "rightValue": ""
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "96e280fc-78f2-49b8-b63c-b5247a29561d",
+      "name": "Live email? (ack)",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        4420,
+        -120
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $('Finalise').item.json.source }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              },
+              "rightValue": "live"
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "443a7be6-9748-451f-8b74-f3cc73be7646",
+      "name": "Reply: acknowledgement",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        4680,
+        -220
+      ],
+      "parameters": {
+        "resource": "message",
+        "operation": "reply",
+        "messageId": "={{ $('Finalise').item.json.message_id }}",
+        "emailType": "text",
+        "message": "={{ $('Finalise').item.json.check.vendor_ack }}",
+        "options": {
+          "appendAttribution": false,
+          "replyToSenderOnly": true
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "webhookId": "e0011572-b567-4f0b-98a3-660edc2872b6",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "48BDBjPeX8UnzPvh",
+          "name": "teamlaunchbench@gmail.com"
+        }
+      }
+    },
+    {
+      "id": "a400f062-97ee-42f1-8f96-dd50be4c4de9",
+      "name": "Send: acknowledgement",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        4680,
+        -20
+      ],
+      "parameters": {
+        "resource": "message",
+        "operation": "send",
+        "sendTo": "={{ $('Finalise').item.json.reply_to }}",
+        "subject": "={{ $('Finalise').item.json.reply_subject }}",
+        "emailType": "text",
+        "message": "={{ $('Finalise').item.json.check.vendor_ack }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "webhookId": "cdf219e8-4da4-4615-b964-fd1af0093637",
       "credentials": {
         "gmailOAuth2": {
           "id": "48BDBjPeX8UnzPvh",
@@ -1180,18 +1305,7 @@
         ],
         [
           {
-            "node": "What next?",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Log to ap_invoices": {
-      "main": [
-        [
-          {
-            "node": "What next?",
+            "node": "Acknowledge the vendor?",
             "type": "main",
             "index": 0
           }
@@ -1289,6 +1403,75 @@
           }
         ]
       ]
+    },
+    "Log to ap_invoices": {
+      "main": [
+        [
+          {
+            "node": "Acknowledge the vendor?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Acknowledge the vendor?": {
+      "main": [
+        [
+          {
+            "node": "Live email? (ack)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "What next?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Live email? (ack)": {
+      "main": [
+        [
+          {
+            "node": "Reply: acknowledgement",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send: acknowledgement",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reply: acknowledgement": {
+      "main": [
+        [
+          {
+            "node": "What next?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send: acknowledgement": {
+      "main": [
+        [
+          {
+            "node": "What next?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "settings": {
@@ -1325,18 +1508,22 @@
     },
     {
       "id": "85174726-1d68-47b8-8136-3f81c3434568",
-      "name": "File and log",
+      "name": "File, log and acknowledge",
       "nodeNames": [
         "Has a PDF to file?",
         "File the PDF",
         "Finalise",
         "Has an invoice?",
         "Log to ap_invoices",
+        "Acknowledge the vendor?",
+        "Live email? (ack)",
+        "Reply: acknowledgement",
+        "Send: acknowledgement",
         "What next?",
         "Live email? (labels)",
         "Label the outcome"
       ],
-      "description": "File the PDF in Drive, log to ap_invoices, label live email with the outcome, then route by outcome."
+      "description": "File the PDF, log the invoice, acknowledge the vendor at once (never a suspected fraud), then route the outcome."
     },
     {
       "id": "4d1a8210-bd48-44d8-b6f6-fedfabfae797",

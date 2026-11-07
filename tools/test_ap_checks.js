@@ -71,6 +71,11 @@ check('21', r('21').fraud.includes('lookalike_domain') && /\+91 80 0000 1101/.te
 check('28', r('28').outcome === 'SUSPECTED_FRAUD' && r('28').checks.every(c => c.ok) && r('28').fraud.join() === 'bank_mismatch', `all checks pass but bank mismatch -> fraud; got ${r('28').outcome} ${r('28').fraud}`);
 check('28', /ending 8851.*ending 3356/.test(r('28').fraud_text[0]) && /\+91 80 0000 1103/.test(r('28').html), 'bank 8851 vs 3356, call-back +91 80 0000 1103');
 check('33', r('33').outcome === 'QUERY' && r('33').fraud.length === 0 && /GSS-2026-1093.*25 Oct 2026/s.test(r('33').vendor_reply || ''), `payment-status reply for GSS-2026-1093, no fraud; got ${r('33').outcome}`);
+// Every vendor gets an immediate acknowledgement, except suspected fraud.
+for (const s of ['18', '19', '20', '33']) check(s, /We have received it/.test(r(s).vendor_ack || '') && !/₹/.test(r(s).vendor_ack), `acknowledged at once, no amounts; got ${JSON.stringify(r(s).vendor_ack)}`);
+check('18', /invoice \S+/.test(r('18').vendor_ack) && /processing it/.test(r('18').vendor_ack), 'a passed invoice: received and processing');
+check('20', /will reply shortly/.test(r('20').vendor_ack), 'a reply waiting for approval: "will reply shortly"');
+for (const s of ['21', '28']) check(s, !r(s).vendor_ack, 'suspected fraud: no acknowledgement');
 
 // Real email: the classifier sees the real From (the test account, or a tester's own
 // Gmail) and may call it a look-alike. Code decides once the vendor is known.

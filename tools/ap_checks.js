@@ -188,6 +188,13 @@ function checkInvoice(input, data) {
     }).join('\n\n') + sign;
   }
 
+  // Every vendor hears back at once, except suspected fraud: a reply would tell a
+  // fraudster the address works and the invoice was seen. Promises nothing beyond receipt.
+  if (outcome !== 'SUSPECTED_FRAUD') {
+    const ackHello = vendor ? hello : vName !== 'Unknown sender' ? `Dear ${vName},\n\n` : 'Hello,\n\n';
+    result.vendor_ack = `${ackHello}Thank you for ${invNo ? `invoice ${invNo}` : 'your email'}. We have received it and our Accounts Payable team ${result.path === 'reply' ? 'will reply shortly' : 'is processing it. We will contact you if we need anything else'}.${sign}`;
+  }
+
   result.subject = {
     fraud: `URGENT: suspected payment fraud - ${vName}${referenced.length ? ' - ' + referenced.join(', ') : ''}`,
     notice: `${outcome === 'PASS' ? 'Invoice ready for approval' : outcome === 'FLAG' ? 'Invoice flagged for review' : 'Invoice on hold'}: ${vName}${invNo ? ' ' + invNo : ''}${inv ? ` (${inr(taxable)} + GST)` : ''}`,
@@ -225,6 +232,7 @@ function checkInvoice(input, data) {
       h += '{{PDF_LINK}}';
     }
     if (tickets.length) h += `<p><b>Context:</b> recent ${esc(vendor.category.toLowerCase())} complaints from members, worth weighing before paying any extra charge:</p><ul>${tickets.map(t => `<li>${esc(t.ticket_id)} (${esc(t.company)}, ${esc(t.centre)} ${esc(t.location)}, ${esc(String(t.received_at).slice(0, 10))}): ${esc(t.description)}</li>`).join('')}</ul>`;
+    if (result.vendor_ack) h += `<p><b>Already sent</b> to ${esc(email.reply_to || email.from_address)}:</p><div style="${box}background:#EEF1F5">${esc(result.vendor_ack)}</div>`;
     if (result.vendor_reply) h += `<p><b>Reply to ${esc(email.reply_to || email.from_address)}</b> (sent when you approve):</p><div style="${box}border-left:3px solid #F26B1D;border-radius:0">${esc(result.vendor_reply)}</div>`;
     h += `<p><b>Their email</b>, received ${esc(String(email.now || '').replace('T', ' ').slice(0, 16))} IST from ${esc(email.from_address)}${email.tagged && email.effective_from && email.effective_from !== email.from_address ? ` (as ${esc(email.effective_from)})` : ''}:</p><div style="${box}background:#F6F1E9"><b>Subject:</b> ${esc(email.subject || '')}\n\n${esc(email.body || '')}</div>`;
     return h + '</div>';

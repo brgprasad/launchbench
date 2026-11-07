@@ -48,9 +48,13 @@ function checkInvoice(input, data) {
   }
 
   // ---------- fraud signals (override every other outcome) ----------
-  const fraud = new Set((cls.fraud_signals || []).filter(f => FRAUD_LABELS[f]));
+  // Look-alike domains are decided here, not by the classifier, whenever the vendor
+  // is known: code knows the effective sender (an [as ...] tag in demo mode) and the
+  // vendor master, while the classifier sees only the real From. A tester's own
+  // Gmail address, or the test account sending a tagged seed, is not a look-alike.
+  const fraud = new Set((cls.fraud_signals || []).filter(f => FRAUD_LABELS[f] && !(vendor && f === 'lookalike_domain')));
   const senderDomain = String(email.effective_from || email.from_address || '').split('@')[1] || '';
-  if (vendor && email.tagged && senderDomain && senderDomain.toLowerCase() !== vendor.email_domain.toLowerCase()) {
+  if (vendor && senderDomain && senderDomain.toLowerCase() !== vendor.email_domain.toLowerCase()) {
     const root = vendor.email_domain.split('.')[0].toLowerCase();
     if (senderDomain.toLowerCase().includes(root) || editDistance(senderDomain.split('.')[0], root) <= 3) fraud.add('lookalike_domain');
   }

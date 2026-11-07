@@ -45,7 +45,7 @@ Tester's email ──► Gmail inbox ──► WF-0 Intake & triage
               ► log to the Sheet ► auto-send, or wait for a staff member's Approve click
 
 WF-E Errors: any failure → plain-English alert email + errors tab; every 30 min, flags unanswered emails
-WF-T Test runner: feeds the 33 seed emails into WF-0 without sending mail (regression testing)
+WF-T Test runner: feeds the 35 seed emails into WF-0 without sending mail (regression testing)
 ```
 
 | Workflow | What the code decides | What waits for a human |
@@ -87,7 +87,7 @@ WF-T Test runner: feeds the 33 seed emails into WF-0 without sending mail (regre
 | `data/ap_invoices.csv` | Vendor-invoice log, pre-filled with October so duplicate checks have history |
 | `data/personas.csv` | 20 identities the test runner uses (15 members, 4 vendors, 1 impostor) |
 | `data/leads.csv`, `tickets.csv`, `billing_cases.csv`, `requests.csv`, `triage_log.csv`, `errors.csv`, `testers.csv`, `settings.csv` | The tabs the workflows write to and read from (in Google Sheets when live; these are the starting copies) |
-| `test-emails/` | 33 seed emails with expected outcomes in their front matter; `triage-expectations.json` is the machine-checkable version; `attachments/` holds the 4 vendor-invoice PDFs the seeds use; `tester-kit/` holds 4 fresh ones for live testers (clean, over budget, missing PO, bank-account fraud); `*-inputs.json` are captured classifier outputs used by the unit tests |
+| `test-emails/` | 35 seed emails with expected outcomes in their front matter; `triage-expectations.json` is the machine-checkable version; `attachments/` holds the 4 vendor-invoice PDFs the seeds use; `tester-kit/` holds 4 fresh ones for live testers (clean, over budget, missing PO, bank-account fraud); `*-inputs.json` are captured classifier outputs used by the unit tests |
 | `tools/*.js` | Rule engines and their tests (see above) |
 | `tools/*.py` | `gen_data.py`, `gen_pdfs.py`, `gen_tester_kit.py`, `gen_customer_invoices.py` generate data and PDFs; `verify.py` checks consistency; `build_site.py` builds the company website; `publish_drive.py`, `score_triage.py`, `export_workflows.py` are the author's operations scripts |
 | `workflows/*.json` | n8n workflow exports (import-ready) |
@@ -128,6 +128,8 @@ WF-T Test runner: feeds the 33 seed emails into WF-0 without sending mail (regre
 | 31 | Adversarial | Written in Hindi (Devanagari script) |
 | 32 | Adversarial | A reply whose quoted earlier message mentions an invoice: only the new text counts |
 | 33 | Adversarial | An ordinary supplier payment query: a false fraud alarm fails |
+| 34 | Query, known gap | Step-free access and an accessible washroom: not in the knowledge base, so "the team will confirm" and approval, nothing invented |
+| 35 | Query, known gap | Bicycles at Whitefield: a near miss next to the covered two-wheeler parking, which must not be stretched to fit |
 
 ## Facts that often trip up a reader
 - **Dates.** The records stop at 30 Nov 2026. Seed emails are processed as of their own scripted dates (2–4 Nov 2026); live email as of the real date.

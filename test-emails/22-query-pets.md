@@ -6,6 +6,7 @@ to: teamlaunchbench@gmail.com
 subject: Bringing my dog to work?
 attachments: []
 expected_class: general_query
+expected_decision: auto-send
 expected_action:
   - Identify the member: M025, Zenith Payroll, dedicated desks at Koramangala.
   - Reply automatically: pets are not allowed at Koramangala. Only HSR Layout has a Paws Zone (ground floor, Monday to Friday). Dogs must be vaccinated and leashed, and the owner signs a waiver.

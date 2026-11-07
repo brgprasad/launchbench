@@ -7,15 +7,25 @@ compares it with the expectations in the seed's front matter:
   - the handler tab the class should reach: leads, tickets, billing_cases,
     requests, ap_invoices (a vendor email only gets a row when it has a PDF)
   - leads.lead_score (expected_lead_score), tickets.priority (expected_priority),
-    ap_invoices.validation_status (expected_validation), billing priority
+    ap_invoices.validation_status (expected_validation), billing priority,
+    requests.decision (expected_decision: auto-send or approval)
   - whether the AI draft passed its checks or a template / [CHECK] was used
   - rows in the errors tab since the run started
 
 Usage (needs the labs Google sign-in, like score_triage.py):
   GD=/path/to/google_drive   # the author's private Google Sheets helper (gsheets), not part of this repo
   PYTHONPATH=$GD $GD/.venv/bin/python tools/check_e2e.py --since "2026-11-06 19:29" [--seeds 01,02]
+
+After tools/send_seeds.py (real emails), pass its run log instead. Rows carry no
+seed_id then, so each email is found in triage_log by its subject, and handler
+rows by their received_at. It also reads the test account's inbox (labs-mail
+sign-in) for the replies a tester would get: an auto-sent answer must arrive,
+and each reply's first words are listed.
+  PYTHONPATH=$GD $GD/.venv/bin/python tools/check_e2e.py --run-log runs/send-20261107-1015.json
 """
+import json
 import argparse
+import csv
 import pathlib
 import re
 
@@ -33,15 +43,22 @@ def seeds():
         get = lambda k: (re.search(rf"^{k}:\s*(.*)$", fm, re.M) or [None, ""])[1].strip()
         sid = get("id").zfill(2)
         out[sid] = {"class": get("expected_class"), "score": get("expected_lead_score"), "priority": get("expected_priority"),
-                    "validation": get("expected_validation"), "pdf": "attachments/" in get("attachments"), "file": f.name}
+                    "validation": get("expected_validation"), "decision": get("expected_decision"), "pdf": "attachments/" in get("attachments"), "file": f.name}
     return out
 
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--since", required=True, help="IST 'YYYY-MM-DD HH:MM' when the run started")
+    ap.add_argument("--since", help="IST 'YYYY-MM-DD HH:MM' when the run started (test-runner runs)")
+    ap.add_argument("--run-log", help="runs/send-*.json from tools/send_seeds.py (real-email runs)")
     ap.add_argument("--seeds", default="", help="comma list; default all")
     a = ap.parse_args()
+    log = json.loads(pathlib.Path(a.run_log).read_text()) if a.run_log else None
+    if log:
+        a.since = a.since or log["started"]
+        a.seeds = a.seeds or ",".join(x["seed"] for x in log["seeds"])
+    if not a.since:
+        ap.error("give --since or --run-log")
     want = {s.strip().zfill(2) for s in a.seeds.split(",") if s.strip()}
     exp = {k: v for k, v in seeds().items() if not want or k in want}
 
@@ -49,13 +66,51 @@ def main():
         tab = {t: sheets.read_records(SID, t) for t in ["triage_log", "leads", "tickets", "billing_cases", "requests", "ap_invoices", "errors"]}
     by_seed = lambda t: {}
     rows = {t: {} for t in tab}
+    # Real emails: subject -> seed in triage_log, then the email's time -> seed in every tab.
+    by_time, seed_cls, seed_member = {}, {}, {}
+    if log:
+        subj = {x["subject"].strip().lower(): x["seed"] for x in log["seeds"]}
+        for r in tab["triage_log"]:
+            if str(r.get("logged_at", "")) >= a.since and r.get("source") == "live" and str(r.get("subject", "")).strip().lower() in subj:
+                by_time[str(r["now"])] = subj[str(r["subject"]).strip().lower()]
+                seed_cls[subj[str(r["subject"]).strip().lower()]] = str(r.get("classes", ""))
+                m = re.search(r"\bM\d{3}\b", str(r.get("identity", "")))
+                if m: seed_member[subj[str(r["subject"]).strip().lower()]] = m.group(0)
+    ref = {}  # seed -> the member or vendor id its [as] tag stands for
+    if log:
+        with open(ROOT / "data" / "personas.csv", newline="") as fh:
+            alias_ref = {p["alias"]: p["ref_id"] for p in csv.DictReader(fh)}
+        ref = {x["seed"]: alias_ref.get(x["alias"], "") for x in log["seeds"]}
+    by_minute = {}
+    for when, sid in by_time.items():
+        by_minute.setdefault(when[:16].replace("T", " "), []).append(sid)
+
+    def seed_for(t, r):
+        """Real emails: tickets log the minute and ap_invoices the date only, so
+        fall back to the minute plus member, or the vendor."""
+        got = by_time.get(str(r.get("now" if t == "triage_log" else "received_at", "")), "")
+        if got or t == "triage_log":
+            return got
+        if t == "ap_invoices":
+            hits = [s for s, v in ref.items() if v and v == r.get("vendor_id") and s in exp and exp[s]["pdf"] and str(r.get("received_at", "")) >= a.since[:10]]
+            return hits[0] if len(hits) == 1 else ""
+        need = {"tickets": "facility_issue", "billing_cases": "customer_billing", "leads": "lead"}.get(t, "")
+        cands = [s for s in by_minute.get(str(r.get("received_at", ""))[:16].replace("T", " "), []) if need in seed_cls.get(s, "")]
+        if len(cands) > 1:
+            cands = [s for s in cands if seed_member.get(s, ref.get(s)) == r.get("member_id")] or cands
+        return cands[0] if len(cands) == 1 else ""
+
     for t, recs in tab.items():
         for r in recs:
-            s = str(r.get("seed_id", "")).zfill(2) if r.get("seed_id") not in ("", None) else ""
+            if log:
+                s = seed_for(t, r)
+            else:
+                s = str(r.get("seed_id", "")).zfill(2) if r.get("seed_id") not in ("", None) else ""
             if t == "triage_log" and str(r.get("logged_at", "")) < a.since:
                 continue
             if s:
                 rows[t].setdefault(s, []).append(r)
+    replies = inbox_replies(log) if log else {}
 
     problems = 0
     for sid, e in exp.items():
@@ -92,6 +147,13 @@ def main():
             bad.append("billing class but no billing_cases row")
         if R:
             r = R[-1]; notes.append(f"request {r['kind']} {r['decision']}")
+            if log:
+                got_reply = replies.get(sid, [])
+                notes.append(f"{len(got_reply)} repl{'y' if len(got_reply) == 1 else 'ies'} in inbox")
+                if r["decision"] == "auto-send" and not got_reply: bad.append("auto-send decided but no reply reached the sender")
+                for g in got_reply: notes.append("  ↳ " + g[:70])
+            if e["decision"] and r["decision"] != e["decision"]:
+                bad.append(f"decision {r['decision']}, expected {e['decision']}: " + str(r.get("draft_check", ""))[-120:])
             if "CHECK BEFORE APPROVING" in str(r.get("draft_check", "")) or "failed" in str(r.get("draft_check", "")).lower(): bad.append("request draft failed its check: " + str(r.get("draft_check", ""))[:90])
         elif ("change_request" in got or "general_query" in got) and "lead" not in got:
             bad.append("question/change but no requests row")
@@ -109,6 +171,17 @@ def main():
     print(f"\n{len(exp) - problems}/{len(exp)} seeds ok; errors tab rows since {a.since}: {len(errs)}")
     for r in errs:
         print(f"   {r['logged_at']} {r['workflow'][:30]} @ {r['node']}: {str(r['error'])[:90]}")
+
+
+def inbox_replies(log):
+    """Snippets of the messages that came back into each sent email's thread."""
+    from gsheets import auth
+    svc = auth.gmail_service("labs-mail")
+    out = {}
+    for x in log["seeds"]:
+        th = svc.users().threads().get(userId="me", id=x["thread_id"], format="metadata", metadataHeaders=["From"]).execute()
+        out[x["seed"]] = [m.get("snippet", "") for m in th.get("messages", []) if m["id"] != x["message_id"]]
+    return out
 
 
 if __name__ == "__main__":

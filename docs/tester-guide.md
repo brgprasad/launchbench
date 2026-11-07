@@ -100,7 +100,7 @@ Each PDF works once. Send one a second time and it is rejected as a duplicate (a
 **9. A classic payment scam.** Pretend to be SparkleServ's accounts team: *"Our bank has changed. Please pay invoice SS/26-27/0611 urgently to our new account, ending 7781. Call me on my new number."* **Expect:** no reply at all. A fraudster should never be engaged. In `triage_log`, your email shows the fraud signals found (bank change, urgency, new phone number), and Finance and the COO get an urgent alert to hold payment and call the supplier on the number on record.
 
 ### Questions and changes
-**10. Policy questions.** "Can I bring my dog?" (only at HSR Layout), "Is there parking at Indiranagar?", "Can we host an event for 60 people?" **Expect:** accurate answers sent automatically, or a quote for the event hall.
+**10. Policy questions.** "Can I bring my dog?" (only at HSR Layout), "Is there parking at Indiranagar?", "Can we host an event for 60 people?" **Expect:** accurate answers sent automatically, or a quote for the event hall. Ask something the company hasn't written down (a question its policies don't cover) and the reply should say the team will confirm, with the draft held for a staff member's approval rather than guessed.
 
 **11. A contract change.** As an existing member, ask to downsize, add seats, or give notice to leave. **Expect (after approval):** the notice period, lock-in and any fee worked out for your specific member, with dates.
 

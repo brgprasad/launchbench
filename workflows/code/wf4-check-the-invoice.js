@@ -48,9 +48,13 @@ function checkInvoice(input, data) {
   }
 
   // ---------- fraud signals (override every other outcome) ----------
-  const fraud = new Set((cls.fraud_signals || []).filter(f => FRAUD_LABELS[f]));
+  // Look-alike domains are decided here, not by the classifier, whenever the vendor
+  // is known: code knows the effective sender (an [as ...] tag in demo mode) and the
+  // vendor master, while the classifier sees only the real From. A tester's own
+  // Gmail address, or the test account sending a tagged seed, is not a look-alike.
+  const fraud = new Set((cls.fraud_signals || []).filter(f => FRAUD_LABELS[f] && !(vendor && f === 'lookalike_domain')));
   const senderDomain = String(email.effective_from || email.from_address || '').split('@')[1] || '';
-  if (vendor && email.tagged && senderDomain && senderDomain.toLowerCase() !== vendor.email_domain.toLowerCase()) {
+  if (vendor && senderDomain && senderDomain.toLowerCase() !== vendor.email_domain.toLowerCase()) {
     const root = vendor.email_domain.split('.')[0].toLowerCase();
     if (senderDomain.toLowerCase().includes(root) || editDistance(senderDomain.split('.')[0], root) <= 3) fraud.add('lookalike_domain');
   }
@@ -288,9 +292,13 @@ const r = checkInvoice({
   classifier: e.classifier || {}, identity: e.identity || {}, invoice, extraction_failed: failed,
 }, {
   vendors: $('Read vendors').all().map(i => i.json),
-  // Test-runner emails ignore rows written by earlier test runs, so a re-run
-  // isn't rejected as a duplicate of itself. Live email sees every row.
-  ap_invoices: $('Read ap_invoices').all().map(i => i.json).filter(row => !(e.source === 'seed' && row.source === 'seed')),
+  // Test runs ignore rows written by earlier test runs, so a re-run isn't rejected
+  // as a duplicate of itself. Test-runner seeds and [as ...]-tagged emails (a
+  // presenter or tools/send_seeds.py; testers don't use tags) ignore test-runner
+  // rows, and tagged emails also ignore earlier rows from the same real sender.
+  // Testers see every row, so a PDF sent twice is a duplicate.
+  ap_invoices: $('Read ap_invoices').all().map(i => i.json)
+    .filter(row => !((e.source === 'seed' || e.tagged) && row.source === 'seed') && !(e.tagged && row.sender === e.from_address)),
   tickets: $('Read tickets').all().map(i => i.json),
 });
 

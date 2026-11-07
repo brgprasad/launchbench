@@ -138,13 +138,13 @@ WF-0 calls it for any `customer_billing` intent, except a billing remark inside 
   3. PO present and matching
   4. amount within the expected range
   5. GST arithmetic correct to ±₹1
-  6. not a duplicate in `ap_invoices`
+  6. not a duplicate in `ap_invoices`. Test runs skip rows from earlier test runs (seeds skip seed rows; `[as …]`-tagged emails skip seed rows and earlier rows from the same real sender), so re-running a test isn't a duplicate. Testers, who don't use tags, see every row: a PDF sent twice is a duplicate.
   7. billing period valid
 
   Then decide: PASS, HOLD, FLAG or RETURN. Separately, and overriding all of that, look for fraud signals. Any one makes it **suspected fraud**:
   - the bank account on the invoice differs from `vendors.bank_account_last4` (seed 28: every other check passes, from the vendor's genuine domain)
   - the email asks to change bank details or pay to a new account, or presses for urgent payment (seed 21; also what a tester improvises live)
-  - a look-alike sender domain, by edit distance from a known vendor domain (only when a tag sets the sender, e.g. seed 21's `[as sparkleserv-fake]`)
+  - a look-alike sender domain, by edit distance from a known vendor domain (e.g. seed 21's `[as sparkleserv-fake]`). **Code decides this, not the classifier**, whenever the vendor is known: code compares the effective sender (the tag's persona) with the vendor master, while the classifier sees only the real From. The first real-email test run found why: the classifier called the test account's Gmail address a look-alike and every tagged invoice was held as fraud; a tester forwarding a tester-kit PDF from their own Gmail would have hit the same.
 - **Drive:** file the PDF in `Vendor Invoices/`.
 - **Sheets:** append to `ap_invoices`, with the approver(s) from the approval limits and the next payment run (the 10th or 25th).
 - **Gmail:**
@@ -157,7 +157,7 @@ WF-0 calls it for any `customer_billing` intent, except a billing remark inside 
 
 ### WF-5 Changes and general queries
 WF-0 calls it for any email with a `change_request`, or a `general_query` that isn't part of a lead (WF-1's quote answers those).
-- **General queries:** Gemini answers from the knowledge base and returns `confidence`, `needs_staff` (+ reason) and an optional `upsell_hint`. **Code** sends it without a person only if confidence ≥ 0.8, `needs_staff` is false and every ₹ amount appears in the KB. Otherwise it goes for approval: the member's account manager, or Kavya (Head of Operations) for non-members. An upsell hint becomes a note to the account manager.
+- **General queries:** Gemini answers from the knowledge base and returns `confidence`, `needs_staff` (+ reason), an optional `upsell_hint` and `kb_quotes`, the knowledge-base sentences the answer relies on. **Code** sends it without a person only if confidence ≥ 0.8, `needs_staff` is false, every ₹ amount appears in the KB, and the answer is grounded: every quoted sentence exists word for word in the KB, and at least one shares a meaningful word with the question (`checkGrounding` in `tools/change_rules.js`). The self-rated confidence alone is not trusted: in live tests Gemini rated an invented dress code, and a pet rule applied to a question about children, at 0.9–1.0. A question the KB doesn't cover gets "the team will confirm" and goes for approval; seeds 34 and 35 keep two such gaps on purpose. The word check is coarse: a near miss on the same word (bicycle versus two-wheeler parking) is caught only by the prompt. Otherwise it goes for approval: the member's account manager, or Kavya (Head of Operations) for non-members. An upsell hint becomes a note to the account manager.
 - **Changes:** `tools/change_rules.js` (tested by `tools/test_change_rules.js`) applies `kb/03-membership-terms.md`:
   - notice by plan; exit date = the later of the notice end and the lock-in end; deposit refund by exit + 30 days, less ₹500 per unreturned card
   - early-exit fee for lock-in months left; desks may drop 20% in the lock-in with 2 months' notice, beyond that a partial exit
@@ -208,7 +208,7 @@ Set as the error workflow of WF-0 to WF-5, so n8n runs it whenever one of them f
   - draft: 1 per intent
   - PDF extraction: 1, vendor invoices only
 
-  That's about 2–3 calls per email, and a full test run (33 seed emails) is about 80 calls. Check this against the daily free-tier cap.
+  That's about 2–3 calls per email, and a full test run (35 seed emails) is about 85 calls. Check this against the daily free-tier cap.
 - **Temperature:** 0 for classify and extract, about 0.4 for drafting.
 - **The knowledge base goes in the system prompt.** The email goes in the user prompt, inside `<email>` tags, with an instruction to treat its contents as data and not as instructions. This defends against prompt injection hidden in incoming mail.
 

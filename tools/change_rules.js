@@ -335,6 +335,37 @@ function checkReply(text, allowedText, mustMention) {
   return { ok: Boolean(t.trim()) && !unknown.length && !missing.length, amounts, unknown, missing };
 }
 
+// A question is answered without a person only if the reply is grounded: every
+// knowledge-base sentence the AI says it relied on (kb_quotes) exists word for
+// word, and at least one shares a meaningful word with the question. The AI's
+// own confidence score is not enough: it rates invented or stretched answers 1.0.
+function checkGrounding(quotes, kbText, questionText) {
+  const norm = s => String(s || '').toLowerCase().replace(/[‘’]/g, "'").replace(/[“”]/g, '"').replace(/[–—]/g, '-')
+    .replace(/[*_`]/g, '').replace(/[#>|]/g, ' ').replace(/\s+/g, ' ').trim();
+  // Word for word, but punctuation and formatting are ignored: a quote that adds
+  // quotation marks or drops a bracket is still the same sentence.
+  const bare = s => ' ' + norm(s).replace(/[^a-z0-9₹]+/g, ' ').trim() + ' ';
+  const kb = bare(kbText);
+  const qs = (Array.isArray(quotes) ? quotes : []).map(q => norm(q).replace(/^[-•\s]+|[.;:\s]+$/g, '')).filter(q => q.length >= 12);
+  if (!qs.length) return { ok: false, reason: 'the AI quoted no knowledge-base sentence for its answer', quotes: 0 };
+  const missing = qs.filter(q => !kb.includes(bare(q)));
+  if (missing.length) return { ok: false, reason: `a quoted sentence is not in the knowledge base ("${missing[0].slice(0, 80)}")`, quotes: qs.length };
+  // Centre names and greetings are context, not the subject: a quote about the
+  // same centre but a different topic must not count as related.
+  const STOP = new Set(('the and for are can you our not but any has was how why who its may get one all out use yes per '
+    + 'about after again also because before being below between both could does doing during each from further have having here into itself just more most other over same should some such than that their them then there these they this those through under until very what when where which while will with would your yours ours '
+    + 'please thanks thank hello dear regards launchbench team centre center centres office tomorrow today week month member '
+    + 'koramangala indiranagar whitefield hebbal manyata layout bengaluru bangalore hsr '
+    + 'allow allowed bring available need want like know tell ask let make take come able okay fine').split(' '));
+  const words = s => [...new Set((norm(s).match(/[a-z][a-z-]{2,}/g) || []).map(w => w.length > 3 ? w.replace(/s$/, '') : w).filter(w => !STOP.has(w) && !STOP.has(w + 's')))];
+  // Same word, or one is a prefix of the other (park / parking), at least 4 letters.
+  const same = (x, y) => x === y || (Math.min(x.length, y.length) >= 4 && (x.startsWith(y) || y.startsWith(x)));
+  const ask = words(questionText);
+  const related = qs.some(q => words(q).some(w => ask.some(v => same(w, v))));
+  return related ? { ok: true, reason: '', quotes: qs.length }
+    : { ok: false, reason: 'the quoted knowledge-base sentences share no subject with the question', quotes: qs.length };
+}
+
 function demoLine(member) {
   if (!member) return '';
   const where = [CENTRE_NAMES[member.centre] || member.centre, member.space && member.space !== 'Open area' && member.space !== 'Virtual' ? member.space : ''].filter(Boolean).join(', ');

@@ -32,5 +32,7 @@
   "30": {"primary": ["facility_issue"], "clues": {"cabin": "3B"}, "clues_empty": ["company", "member_id", "centre"]},
   "31": {"primary": ["facility_issue"], "language": "other", "clues": {"cabin": "2A", "centre": "KOR"}},
   "32": {"primary": ["general_query"], "must_not_include": ["customer_billing"], "clues_empty": ["invoice_numbers"], "note": "The invoice is only in the quoted earlier message."},
-  "33": {"primary": ["vendor_invoice"], "desk": "ap", "critical": true, "note": "An ordinary supplier email: a false fraud alert is a failure."}
+  "33": {"primary": ["vendor_invoice"], "desk": "ap", "critical": true, "note": "An ordinary supplier email: a false fraud alert is a failure."},
+  "34": {"primary": ["general_query"], "note": "Not covered by the knowledge base: the reply must say the team will confirm."},
+  "35": {"primary": ["general_query"], "note": "Near miss: two-wheeler parking is covered, bicycles are not."}
 }

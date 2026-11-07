@@ -72,6 +72,19 @@ check('28', r('28').outcome === 'SUSPECTED_FRAUD' && r('28').checks.every(c => c
 check('28', /ending 8851.*ending 3356/.test(r('28').fraud_text[0]) && /\+91 80 0000 1103/.test(r('28').html), 'bank 8851 vs 3356, call-back +91 80 0000 1103');
 check('33', r('33').outcome === 'QUERY' && r('33').fraud.length === 0 && /GSS-2026-1093.*25 Oct 2026/s.test(r('33').vendor_reply || ''), `payment-status reply for GSS-2026-1093, no fraud; got ${r('33').outcome}`);
 
+// Real email: the classifier sees the real From (the test account, or a tester's own
+// Gmail) and may call it a look-alike. Code decides once the vendor is known.
+const realMail = (from, tagged) => vm.runInContext('checkInvoice', ctx)({
+  email: { from_address: from, effective_from: tagged ? 'billing@airlinkfibernet.in' : from, tagged, subject: 'Invoice', body: '', now: inputs['18'].now, reply_to: from },
+  classifier: { ...inputs['18'].classifier, fraud_signals: ['lookalike_domain'] },
+  identity: tagged ? { type: 'vendor', vendor_id: 'V02' } : { type: 'prospect' },
+  invoice: INVOICES['18'],
+}, data);
+const rm1 = realMail('demo.test.account@gmail.com', true);
+check('18 real mail', rm1.outcome === 'PASS' && rm1.fraud.length === 0, `tagged seed from the test account passes; got ${rm1.outcome} ${rm1.fraud}`);
+const rm2 = realMail('some.tester@gmail.com', false);
+check('18 tester', rm2.outcome === 'PASS' && rm2.fraud.length === 0, `tester forwarding a clean invoice passes; got ${rm2.outcome} ${rm2.fraud}`);
+
 for (const [id, x] of Object.entries(out)) {
   console.log(`\n== ${id}  ${x.outcome}  (${x.status})  path=${x.path}  to=${x.to_emails}  run=${x.payment_run || '-'}`);
   console.log(`   subject: ${x.subject}`);

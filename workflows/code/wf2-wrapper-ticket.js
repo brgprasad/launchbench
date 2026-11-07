@@ -6,7 +6,13 @@
 const e = $('From WF-0').first().json;
 const c = e.classifier || {};
 const ticketId = 'T-' + (2000 + Number($execution.id));
-const tickets = $('Read tickets').all().map(i => i.json).filter(r => r.ticket_id && !(e.source === 'seed' && r.source === 'seed'));
+// Test runs ignore tickets made by earlier test runs, so a re-run doesn't count its
+// own earlier tickets as repeats: test-runner seeds and [as ...]-tagged emails (a
+// presenter or tools/send_seeds.py; testers don't use tags) skip test-runner
+// tickets, and tagged emails also skip earlier tickets from the same real sender.
+const tagged = /^tag /.test(String((e.identity || {}).source || ''));
+const tickets = $('Read tickets').all().map(i => i.json)
+  .filter(r => r.ticket_id && !((e.source === 'seed' || tagged) && r.source === 'seed') && !(tagged && r.sender === e.reply_to));
 const t = planTicket({ ticket_id: ticketId, now: e.now, email: { subject: e.subject, body: e.body, now: e.now }, classifier: c, member: e.member || null },
   { tickets, vendors: $('Read vendors').all().map(i => i.json), ap_invoices: $('Read ap_invoices').all().map(i => i.json) });
 return [{ json: {

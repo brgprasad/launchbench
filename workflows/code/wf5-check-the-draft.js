@@ -52,6 +52,37 @@ function checkReply(text, allowedText, mustMention) {
   return { ok: Boolean(t.trim()) && !unknown.length && !missing.length, amounts, unknown, missing };
 }
 
+// A question is answered without a person only if the reply is grounded: every
+// knowledge-base sentence the AI says it relied on (kb_quotes) exists word for
+// word, and at least one shares a meaningful word with the question. The AI's
+// own confidence score is not enough: it rates invented or stretched answers 1.0.
+function checkGrounding(quotes, kbText, questionText) {
+  const norm = s => String(s || '').toLowerCase().replace(/[‘’]/g, "'").replace(/[“”]/g, '"').replace(/[–—]/g, '-')
+    .replace(/[*_`]/g, '').replace(/[#>|]/g, ' ').replace(/\s+/g, ' ').trim();
+  // Word for word, but punctuation and formatting are ignored: a quote that adds
+  // quotation marks or drops a bracket is still the same sentence.
+  const bare = s => ' ' + norm(s).replace(/[^a-z0-9₹]+/g, ' ').trim() + ' ';
+  const kb = bare(kbText);
+  const qs = (Array.isArray(quotes) ? quotes : []).map(q => norm(q).replace(/^[-•\s]+|[.;:\s]+$/g, '')).filter(q => q.length >= 12);
+  if (!qs.length) return { ok: false, reason: 'the AI quoted no knowledge-base sentence for its answer', quotes: 0 };
+  const missing = qs.filter(q => !kb.includes(bare(q)));
+  if (missing.length) return { ok: false, reason: `a quoted sentence is not in the knowledge base ("${missing[0].slice(0, 80)}")`, quotes: qs.length };
+  // Centre names and greetings are context, not the subject: a quote about the
+  // same centre but a different topic must not count as related.
+  const STOP = new Set(('the and for are can you our not but any has was how why who its may get one all out use yes per '
+    + 'about after again also because before being below between both could does doing during each from further have having here into itself just more most other over same should some such than that their them then there these they this those through under until very what when where which while will with would your yours ours '
+    + 'please thanks thank hello dear regards launchbench team centre center centres office tomorrow today week month member '
+    + 'koramangala indiranagar whitefield hebbal manyata layout bengaluru bangalore hsr '
+    + 'allow allowed bring available need want like know tell ask let make take come able okay fine').split(' '));
+  const words = s => [...new Set((norm(s).match(/[a-z][a-z-]{2,}/g) || []).map(w => w.length > 3 ? w.replace(/s$/, '') : w).filter(w => !STOP.has(w) && !STOP.has(w + 's')))];
+  // Same word, or one is a prefix of the other (park / parking), at least 4 letters.
+  const same = (x, y) => x === y || (Math.min(x.length, y.length) >= 4 && (x.startsWith(y) || y.startsWith(x)));
+  const ask = words(questionText);
+  const related = qs.some(q => words(q).some(w => ask.some(v => same(w, v))));
+  return related ? { ok: true, reason: '', quotes: qs.length }
+    : { ok: false, reason: 'the quoted knowledge-base sentences share no subject with the question', quotes: qs.length };
+}
+
 function demoLine(member) {
   if (!member) return '';
   const where = [CENTRE_NAMES[member.centre] || member.centre, member.space && member.space !== 'Open area' && member.space !== 'Virtual' ? member.space : ''].filter(Boolean).join(', ');
@@ -113,19 +144,25 @@ const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g,
 const chk = checkReply(draft, a.allowed_text, a.must_mention);
 const conf = out ? Number(out.confidence) || 0 : 0;
 const whyNot = [];
+let grounding = null;
 if (a.path === 'change') whyNot.push('membership changes always need the account manager\'s approval');
 else {
   if (!draft) whyNot.push('the AI draft failed');
   if (out && out.needs_staff) whyNot.push('the AI asked for a person to check: ' + (out.staff_reason || 'no reason given'));
   if (out && conf < 0.8) whyNot.push(`the AI's confidence is ${conf} (needs 0.8)`);
   if (chk.unknown.length) whyNot.push('an amount is not in the price list');
+  if (draft) {
+    grounding = checkGrounding(out && out.kb_quotes, a.allowed_text, `${a.subject || ''}\n${a.body || ''}`);
+    if (!grounding.ok) whyNot.push(grounding.reason);
+  }
 }
 const autoSend = a.path === 'query' && whyNot.length === 0 && chk.ok;
 const source = a.path === 'change' ? 'the computed facts' : 'the price list and knowledge base';
 const checkText = !draft ? 'The AI draft failed, so a holding reply is shown instead.'
   : [chk.unknown.length ? `CHECK BEFORE APPROVING: ${chk.unknown.join(', ')} ${chk.unknown.length > 1 ? 'are' : 'is'} not in ${source}.` : '',
      chk.missing.length ? `CHECK BEFORE APPROVING: the draft doesn't mention ${chk.missing.join(', ')}.` : ''].filter(Boolean).join(' ')
-    || `Checks passed: ${chk.amounts.length === 1 ? `the one amount matches ${source}` : chk.amounts.length ? `all ${chk.amounts.length} amounts match ${source}` : 'no amounts quoted'}${a.must_mention.length ? `; it states ${a.must_mention.join(' and ')}` : ''}.`;
+    || `Checks passed: ${chk.amounts.length === 1 ? `the one amount matches ${source}` : chk.amounts.length ? `all ${chk.amounts.length} amounts match ${source}` : 'no amounts quoted'}${a.must_mention.length ? `; it states ${a.must_mention.join(' and ')}` : ''}${grounding && grounding.ok ? `; its ${grounding.quotes} quoted knowledge-base sentence${grounding.quotes === 1 ? '' : 's'} exist and match the question` : ''}.`;
+const groundingText = grounding && !grounding.ok ? ` Not sent automatically: ${grounding.reason}.` : '';
 
 const fallback = a.path === 'change'
   ? `Hi ${a.contact_first},\n\nThanks for your email. I have your request and will get back to you shortly with the details.\n\n${ownerFirst}\nTeam Launchbench`
@@ -195,7 +232,7 @@ return [{ json: {
   effective_date: p ? p.exit_date || p.effective || '' : '', new_monthly_inr: p && p.new_monthly ? p.new_monthly : '',
   fee_inr: p && p.fee_inr ? p.fee_inr : '', confidence: out ? conf : '',
   decision: autoSend ? 'auto-send' : 'approval', status: autoSend ? 'Sending automatically' : 'Awaiting approval',
-  owner: a.owner, draft_check: checkText, draft_reply: body,
+  owner: a.owner, draft_check: checkText + groundingText, draft_reply: body,
   // fields for the email nodes
   auto_send: autoSend, message_id: a.message_id, reply_to: a.reply_to, reply_subject: a.reply_subject, reply_body: body,
   owner_email: a.owner_email,

@@ -13,6 +13,7 @@ vm.runInContext(fs.readFileSync(path.join(__dirname, 'change_rules.js'), 'utf8')
 const planChange = vm.runInContext('planChange', ctx);
 const checkReply = vm.runInContext('checkReply', ctx);
 const demoLine = vm.runInContext('demoLine', ctx);
+const checkGrounding = vm.runInContext('checkGrounding', ctx);
 
 function csv(name) {
   const text = fs.readFileSync(path.join(ROOT, 'data', name), 'utf8').replace(/\r/g, '');
@@ -79,6 +80,34 @@ check('checkReply', !r1.ok && r1.missing.includes('31 Dec 2026'), 'missing exit 
 const r2 = checkReply('Exit 31 Dec 2026. Refund ₹25,500 (Rs 25500) by 30 Jan 2027. Fee ₹999.', s17.customer_facts.join(' '), s17.must_mention);
 check('checkReply', !r2.ok && r2.unknown.join() === '₹999', 'unknown amount detected');
 check('demoLine', demoLine(M('M002')) === "Demo: you're writing as Paysetu Fintech Pvt. Ltd. (M002, Indiranagar, Cabin 4A).", demoLine(M('M002')));
+
+// Grounding: synthetic cases, not real tester questions.
+const KB = '## House rules\n- **Quiet hours** in the open area run 9 am to 6 pm.\n- Printing is free up to 100 pages a month per member.\n- Two-wheeler parking costs ₹800 a month at Whitefield.';
+const g1 = checkGrounding(['Printing is free up to 100 pages a month per member.'], KB, 'Printing\nHow many pages can we print each month?');
+check('grounding', g1.ok, `exact quote that matches the question passes; got ${g1.reason}`);
+const g2 = checkGrounding(['Quiet hours in the open area run 9 am to 6 pm'], KB, 'Noise\nWhat are the quiet hours?');
+check('grounding', g2.ok, `markdown bold and trailing full stop ignored; got ${g2.reason}`);
+const g3 = checkGrounding([], KB, 'Lockers\nDo you rent lockers?');
+check('grounding', !g3.ok && /no knowledge-base sentence/.test(g3.reason), 'no quotes: not grounded');
+const g4 = checkGrounding(['Lockers cost ₹500 a month at every centre.'], KB, 'Lockers\nDo you rent lockers?');
+check('grounding', !g4.ok && /not in the knowledge base/.test(g4.reason), 'invented policy quote rejected');
+const g5 = checkGrounding(['Quiet hours in the open area run 9 am to 6 pm.'], KB, 'Lockers\nDo you rent lockers for laptops?');
+check('grounding', !g5.ok && /share no subject/.test(g5.reason), 'real quote about a different subject rejected');
+const g7 = checkGrounding(['Two-wheeler parking costs ₹800 a month at Whitefield.'], KB, 'Lockers\nCan we rent a locker at Whitefield?');
+check('grounding', !g7.ok, 'sharing only the centre name is not related');
+const g8 = checkGrounding(['Two-wheeler parking costs ₹800 a month at Whitefield.'], KB, 'Where can I park at Whitefield?');
+check('grounding', g8.ok, `park / parking match; got ${g8.reason}`);
+const g9 = checkGrounding(['Printing is free up to 100 pages a month per member.'], KB, 'Pets\nCan I bring my dog?');
+check('grounding', !g9.ok, 'a month and per member are not a shared subject');
+const KB2 = KB + '\n- Pets are allowed only at HSR Layout, in the Paws Zone.';
+const g10 = checkGrounding(['Pets are allowed only at HSR Layout, in the Paws Zone.'], KB2, 'Can I bring my nephew along to HSR? Is that allowed?');
+check('grounding', !g10.ok, 'allowed / bring / centre are not a shared subject');
+const g11 = checkGrounding(['"Quiet hours" in the open area run 9 am to 6 pm.'], KB, 'What are the quiet hours?');
+check('grounding', g11.ok, `added quotation marks are ignored; got ${g11.reason}`);
+const g12 = checkGrounding(['Quiet hours in the open area run 9 am to 7 pm.'], KB, 'What are the quiet hours?');
+check('grounding', !g12.ok, 'a changed time is caught');
+const g6 = checkGrounding('Printing is free', KB, 'printing');
+check('grounding', !g6.ok, 'a non-array or too-short quote is not grounding');
 
 for (const [k, p] of Object.entries(out)) {
   console.log(`\n== ${k}: ${p.summary}   approver=${p.approver}${p.fyi.length ? ' fyi=' + p.fyi : ''}  reply due ${p.reply_due}`);

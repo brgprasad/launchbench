@@ -9,7 +9,7 @@ There are three layers. Each one guards a different kind of mistake.
 | Layer | What it proves | How to run | Needs |
 |---|---|---|---|
 | **Data consistency** (`tools/verify.py`) | The knowledge base, CSVs, seed emails and PDFs agree with each other: every price matches `pricing.csv`, every invoice adds up, every member or invoice a seed mentions exists, every PDF's totals are right | `python3 -I tools/verify.py .` | Nothing; runs offline in a second |
-| **Triage regression** (WF-T + `tools/score_triage.py`) | Gemini classifies all 33 seed emails correctly: class, desk, extracted fields, identity clues, fraud signals | Run WF-T, then the scorer (§2) | Gemini quota: one call per seed |
+| **Triage regression** (WF-T + `tools/score_triage.py`) | Gemini classifies all 35 seed emails correctly: class, desk, extracted fields, identity clues, fraud signals | Run WF-T, then the scorer (§2) | Gemini quota: one call per seed |
 | **Scorer self-test** (`score_triage.py --selftest`) | The scorer itself catches mistakes. It feeds in 10 deliberately wrong answers and checks each one is flagged at the right severity. | `score_triage.py --selftest` | Nothing; offline |
 
 ### What the triage regression checks
@@ -45,17 +45,17 @@ Every seed email is checked against its entry in [`test-emails/triage-expectatio
 - **warn:** worth a look but not wrong, e.g. a desirable fraud signal not raised, or a class that changed between runs.
 
 ### What is *not* covered automatically, and how it is covered instead
-- **The live Gmail path:** the trigger, attachment download and mark-as-read. WF-T bypasses Gmail by design. Covered by quick check Q3 below, once WF-0 is published.
+- **The live Gmail path:** the trigger, attachment download and mark-as-read. WF-T bypasses Gmail by design. Covered by the real-email run below (`tools/send_seeds.py`) and by quick check Q3.
 - **Repeatability:** the same email can occasionally be classified differently. Run the full set twice and use `--stability` (§2).
 - **Emails nobody thought of.** The seeds are a regression baseline, not proof of general accuracy. Your own improvised emails (§4) are the real test.
 - **Later workflows:** replies, quotes, SLA times, approvals and vendor checks. Their expectations already exist as the `expected_action` list in each seed file, and they get automated checks when each workflow is built.
 
 ## 2. Running the triage regression
 
-1. In n8n, open **LB · WF-T Test runner**. Double-click **Which seeds**, enter `01, 07, 21` (or leave it empty for all 33), close it and press **Ctrl+S**.
+1. In n8n, open **LB · WF-T Test runner**. Double-click **Which seeds**, enter `01, 07, 21` (or leave it empty for all 35), close it and press **Ctrl+S**.
    - Keep **triage_only** on (the default). WF-0 then classifies and logs each seed but runs no handler: no replies, staff emails or approval cards, and one Gemini call per seed. Turn it off only for an end-to-end run of the handlers, which sends real mail to the `+lb-` aliases and leaves approval runs waiting.
-2. Click **Execute workflow**. WF-T sends **one seed every 30 seconds**, like real traffic (firing all 33 at once would exceed Google Sheets' 60 reads a minute per user). A full run takes about 22 minutes; rows appear in `triage_log` as each seed is classified.
-   - **The free tier allows about 500 Gemini 3.5 Flash-Lite calls a day**, shared with live testing and reset at **13:30 IST** (midnight Pacific). A full regression (33 calls) fits easily.
+2. Click **Execute workflow**. WF-T sends **one seed every 30 seconds**, like real traffic (firing all 35 at once would exceed Google Sheets' 60 reads a minute per user). A full run takes about 23 minutes; rows appear in `triage_log` as each seed is classified.
+   - **The free tier allows about 500 Gemini 3.5 Flash-Lite calls a day**, shared with live testing and reset at **13:30 IST** (midnight Pacific). A full regression (35 calls) fits easily.
 3. Score it from the project folder:
    ```bash
    GD=/path/to/google_drive   # the author's private Google Sheets helper (gsheets), not part of this repo
@@ -69,6 +69,15 @@ Every seed email is checked against its entry in [`test-emails/triage-expectatio
 PYTHONPATH=$GD $GD/.venv/bin/python tools/check_e2e.py --since "2026-11-06 19:48"
 ```
 Afterwards, stop the approval runs it leaves waiting (n8n → Executions → filter *Waiting*) and reset the spreadsheet before real testers use it.
+
+**Real-email run (the whole path, as a tester sees it).** `tools/send_seeds.py` sends the seeds as real Gmail messages from the test account to the demo inbox, one every 30 seconds, so they go through the Gmail trigger, the bulk-mail filter and the published workflows. Member and vendor seeds get an `[as <alias>]` subject tag; prospect and noise seeds arrive as the test account. Then `check_e2e.py --run-log` matches each email to its seed by subject, checks every handler row as above, and reads the test account's inbox for the replies that came back:
+```bash
+PYTHONPATH=$GD $GD/.venv/bin/python tools/send_seeds.py --seeds 22,34,35      # or no --seeds for all
+PYTHONPATH=$GD $GD/.venv/bin/python tools/check_e2e.py --run-log runs/send-20261107-1015.json
+```
+- It needs WF-0 and the handlers **published**, and the helper's `labs-mail` sign-in (send and read only).
+- Results use today's date, not the seed's date, so notice periods and SLA clocks shift accordingly.
+- It leaves real mail in both inboxes and a row for the test account in the `testers` tab. Reset before real testers use the sheet.
 
 **Or ask Claude: "run the triage regression".** Claude runs WF-T through the n8n connection, waits, runs the scorer and reports the result.
 
@@ -103,7 +112,7 @@ The columns in between hold details: sentiment, language, the extracted identity
 
 ### Q1. Smoke test: does the pipeline run at all?
 1. Open **LB · WF-T Test runner**.
-2. On the canvas, double-click the second box, **Which seeds**. A panel opens with one field, `only`. Type `07`; for several seeds, `07, 11, 21`; empty means all 33.
+2. On the canvas, double-click the second box, **Which seeds**. A panel opens with one field, `only`. Type `07`; for several seeds, `07, 11, 21`; empty means all 35.
 3. Close the panel (← **Back to canvas**, top left) and press **Ctrl+S** to save.
 4. Click **Execute workflow**, the button at the bottom centre of the canvas.
 5. Watch the boxes get green ticks from left to right. The last box, **Send to WF-0**, spins while WF-0 works, then turns green. About 20 seconds for one seed.
